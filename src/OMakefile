@@ -1,0 +1,34 @@
+#
+# This project requires ocamlfind (default - false).
+#
+USE_OCAMLFIND = true
+#
+OCAMLPACKS[] =
+
+#
+if $(not $(OCAMLFIND_EXISTS))
+   eprintln(This project requires ocamlfind, but is was not found.)
+   eprintln(You need to install ocamlfind and run "omake --configure".)
+   exit 1
+
+#
+# Include path
+#
+OCAMLINCLUDES +=
+
+#
+# Various options
+#
+OCAMLFLAGS    += -g
+# OCAMLCFLAGS   +=
+# OCAMLOPTFLAGS +=
+# OCAML_LINK_FLAGS +=
+# OCAML_BYTE_LINK_FLAGS +=
+# OCAML_NATIVE_LINK_FLAGS +=
+
+#
+# OCAML_LIBS += -custom
+# OCAML_CLIBS +=
+# OCAML_OTHER_LIBS += camlidl
+# OCAML_LIB_FLAGS += -cclib -lsdlcaml
+#
