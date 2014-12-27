@@ -4,7 +4,8 @@
 USE_OCAMLFIND = true
 #
 OCAMLPACKS[] =
-
+	lambda-term
+	core
 #
 if $(not $(OCAMLFIND_EXISTS))
    eprintln(This project requires ocamlfind, but is was not found.)
@@ -19,7 +20,7 @@ OCAMLINCLUDES +=
 #
 # Various options
 #
-OCAMLFLAGS    += -g
+OCAMLFLAGS    += -g -thread
 # OCAMLCFLAGS   +=
 # OCAMLOPTFLAGS +=
 # OCAML_LINK_FLAGS +=
@@ -32,3 +33,7 @@ OCAMLFLAGS    += -g
 # OCAML_OTHER_LIBS += camlidl
 # OCAML_LIB_FLAGS += -cclib -lsdlcaml
 #
+
+OCamlProgram(main, main)
+
+.DEFAULT: main$(EXE)

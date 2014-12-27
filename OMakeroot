@@ -4,9 +4,6 @@ open build/LaTeX
 
 OMAKEPATH += $(dir ./MyOMake)
 
-open MyOCaml
-open MyFunction
-
 #
 # The command-line variables are defined *after* the
 # standard configuration has been loaded.
