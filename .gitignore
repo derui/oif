@@ -1,0 +1,13 @@
+*.o
+*.exe
+*.opt
+*.omc
+*.cmi
+*.cmx
+*.cma
+*.cmax
+*.a
+
+.omakedb*
+
+src/main
