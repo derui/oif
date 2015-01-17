@@ -37,6 +37,13 @@ OCAMLFLAGS    += -g -thread
 # OCAML_LIB_FLAGS += -cclib -lsdlcaml
 #
 
-OCamlProgram(main, main)
+FILES[]=
+	types
+	renderer
+	read_line
+	filter
+	main
+
+OCamlProgram(main, $(FILES))
 
 .DEFAULT: main$(EXE)

@@ -2,11 +2,14 @@
 *.exe
 *.opt
 *.omc
+*.cmo
 *.cmi
 *.cmx
 *.cma
 *.cmax
 *.a
+*.cmt
+*.cmti
 
 .omakedb*
 
