@@ -41,6 +41,7 @@ FILES[]=
 	types
 	renderer
 	read_line
+	text_match
 	filter
 	main
 
