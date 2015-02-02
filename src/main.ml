@@ -1,4 +1,5 @@
 open Core.Std
+open CamomileLibrary
 
 let reopen_in chan fname =
   let open Lwt in 
@@ -12,7 +13,6 @@ let load_lines channel =
     let rec read_lines channel lines =
       catch (fun () ->
              Lwt_io.read_line channel >>= fun line ->
-             let line = Types.Candidate.make line in
              read_lines channel (line :: lines)
       ) (fun _ -> return lines)
     in
@@ -32,18 +32,38 @@ let process_when_tty window is_a_tty =
 let () =
   let open Lwt in
   let window = LTerm.create Lwt_unix.stdin Lwt_io.stdin Lwt_unix.stdout Lwt_io.stdout in
+  LTerm_read_line.bind [{LTerm_key.code = LTerm_key.Char(UChar.of_char 'n');
+                         control = true; meta = false; shift = false}]
+                       [LTerm_read_line.Complete_bar_next];
+  LTerm_read_line.bind [{LTerm_key.code = LTerm_key.Char(UChar.of_char 'p');
+                         control = true; meta = false; shift = false}]
+                       [LTerm_read_line.Complete_bar_prev];
+  let info = ref Types.Info.empty in
+
   begin
-    let module G = LTerm_geom in
     let monad =
       window >>= fun window -> return (LTerm.is_a_tty window) >>= fun is_a_tty ->
       process_when_tty window is_a_tty >>= fun lines ->
-      LTerm.clear_screen window >>= fun () ->
       let lines = List.rev lines in
+      info := {!info with
+                Types.Info.candidates = List.map lines ~f:(Types.Candidate.make) |> List.map ~f:Option.some;
+                lines;
+              };
+      return () >>= fun () ->
+      LTerm.clear_screen window >>= fun () ->
       let term = new Read_line.read_line window [] 0 in
-      Renderer.render window lines >>= fun () ->
-      Lwt_react.E.map_s (Filter.filter window lines) term#text |> return >>= fun _ ->
+      let module S = LTerm_style in
+      Renderer.render window !info.Types.Info.candidates (0, Const.selection_style) >>= fun () ->
       LTerm.goto window {LTerm_geom.row = 0;col = 0} >>= fun () ->
-      term#run >>= fun s -> Printf.printf "foo %s"  s; return ()
+      let selection = React.E.map (fun selection ->
+                                   Filter.update_selection term !info selection) term#selection in
+      let text = React.E.map (fun text -> Filter.filter term !info text) term#text in
+      let render info' =
+        info := info';
+        Renderer.render window info'.Types.Info.candidates info'.Types.Info.selection in
+      React.E.select [selection;text] |> React.E.l1 render |> return >>= fun _ ->
+      term#run
     in 
-    Lwt_main.run monad
+    let v = Lwt_main.run monad in
+    Printf.printf "%s" v
   end

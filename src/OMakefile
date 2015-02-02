@@ -43,6 +43,7 @@ FILES[]=
 	read_line
 	text_match
 	filter
+	const
 	main
 
 OCamlProgram(main, $(FILES))

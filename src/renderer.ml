@@ -12,7 +12,13 @@ let draw_candidate ctx l candidate =
   in
   C.map_text ~f candidate |> ignore
 
-let render window candidates =
+let draw_selection ctx (row, style) =
+  let size = LTerm_draw.size ctx in
+  let rect = {LTerm_geom.row1 = row; row2 = row + 1; col1 = 0;col2 = LTerm_geom.cols size} in
+  let ctx = LTerm_draw.sub ctx rect in
+  LTerm_draw.fill_style ctx style
+
+let render window candidates selection =
   let open Lwt in
   LTerm.goto window {LTerm_geom.row = 1; col = 0} >>= fun () ->
   let size = LTerm.size window in
@@ -21,10 +27,17 @@ let render window candidates =
               cols = LTerm_geom.cols size} in
   let mat = LTerm_draw.make_matrix size in
   let ctx = LTerm_draw.context mat size in
+  LTerm_draw.clear ctx;
   List.fold candidates ~init:1 ~f:(fun current candidate ->
-    draw_candidate ctx current candidate;
-    succ current
+    match candidate with
+    | None -> current
+    | Some candidate -> begin
+      draw_candidate ctx current candidate;
+      succ current
+    end
   ) |> ignore;
+
+  (* draw_selection ctx selection; *)
 
   LTerm.render window mat >>= fun () ->
   LTerm.goto window {LTerm_geom.row = 0; col = 0}
