@@ -5,6 +5,7 @@ type style = int * LTerm_style.t
 
 type row = int
 type selection = row * LTerm_style.t
+type direction = Next | Prev
 
 module Candidate : sig
   type t = {
@@ -41,17 +42,26 @@ type candidates = Candidate.t option list
 (* Infomations to filtering candidates. *)
 module Info = struct
   type t = {
-    selection: selection;
-    text: UTF8.t;
-    candidates:candidates;
-    lines: UTF8.t list;
+    mutable selection: selection option;
+    mutable text: UTF8.t;
+    mutable candidates:candidates;
+    mutable lines: UTF8.t list;
+    mutable changed: bool;
   }
-    
-  let empty = {selection = (0, LTerm_style.none);
-               text = "";
-               candidates = [];
-               lines = [];
-              }
+
+  let set_text t text = 
+    let current = t.text in
+    t.text <- text;
+    t.changed <- text <> current;
+    t
+
+  let empty = {
+    selection = None;
+    text = "";
+    candidates = [];
+    lines = [];
+    changed = false;
+  }
 end
 
 

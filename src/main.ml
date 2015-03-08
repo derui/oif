@@ -38,31 +38,46 @@ let () =
   LTerm_read_line.bind [{LTerm_key.code = LTerm_key.Char(UChar.of_char 'p');
                          control = true; meta = false; shift = false}]
                        [LTerm_read_line.Complete_bar_prev];
-  let info = ref Types.Info.empty in
 
   begin
+    let info = Types.Info.empty in
     let monad =
+      let module I = Types.Info in
       window >>= fun window -> return (LTerm.is_a_tty window) >>= fun is_a_tty ->
       process_when_tty window is_a_tty >>= fun lines ->
       let lines = List.rev lines in
-      info := {!info with
-                Types.Info.candidates = List.map lines ~f:(Types.Candidate.make) |> List.map ~f:Option.some;
-                lines;
-              };
+      info.I.lines <- lines;
+      info.I.candidates <- List.map lines ~f:(Types.Candidate.make) |> List.map ~f:Option.some;
+      let info = {Types.Info.empty with
+                   Types.Info.candidates = List.map lines ~f:(Types.Candidate.make) |> List.map ~f:Option.some;
+                 lines;
+              } in
+      let info_e, info_send = React.E.create () in
       return () >>= fun () ->
       LTerm.clear_screen window >>= fun () ->
       let term = new Read_line.read_line window [] 0 in
       let module S = LTerm_style in
-      Renderer.render window !info.Types.Info.candidates (0, Const.selection_style) >>= fun () ->
+      Renderer.render window info.Types.Info.candidates None >>= fun () ->
       LTerm.goto window {LTerm_geom.row = 0;col = 0} >>= fun () ->
-      let selection = React.E.map (fun selection ->
-                                   Filter.update_selection term !info selection) term#selection in
-      let text = React.E.map (fun text -> Filter.filter term !info text) term#text in
+
       let render info' =
-        info := info';
         Renderer.render window info'.Types.Info.candidates info'.Types.Info.selection in
-      React.E.select [selection;text] |> React.E.l1 render |> return >>= fun _ ->
-      term#run
+
+      let select = React.E.select 
+                     [React.E.stamp (React.S.changes term#selection) () ;
+                      React.E.stamp (Zed_edit.changes term#edit) ()
+                     ] in
+      Lwt_react.E.keep select;
+      Lwt_react.E.map_s
+        (fun () ->
+         let module I = Types.Info in
+         let text = Zed_edit.text term#edit |> Zed_rope.to_string  in
+         let info = Filter.filter info text in
+         let info = React.S.value term#selection |> Filter.update_selection info in
+         render info
+        ) select |> ignore;
+
+      Lwt_react.E.map_s render info_e |> ignore; term#run
     in 
     let v = Lwt_main.run monad in
     Printf.printf "%s" v
