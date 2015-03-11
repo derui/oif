@@ -25,9 +25,10 @@ let render window candidates selection =
   LTerm.goto window {LTerm_geom.row = 1; col = 0} >>= fun () ->
   let size = LTerm.size window in
   (* This reassignment size to avoid problem what read_line can not raise event inputting text. *)
-  let size = {LTerm_geom.rows = (LTerm_geom.rows size |> pred);
+  let size = {LTerm_geom.rows = LTerm_geom.rows size;
               cols = LTerm_geom.cols size} in
   let mat = LTerm_draw.make_matrix size in
+  let displayed = LTerm_draw.make_matrix {LTerm_geom.rows = 1;cols = LTerm_geom.cols size} in
   let rect = {LTerm_geom.row1 = 1;col1 = 0;
               row2 = LTerm_geom.rows size;col2 = LTerm_geom.cols size} in
   let ctx = LTerm_draw.context mat size in
@@ -43,5 +44,5 @@ let render window candidates selection =
 
   draw_selection ctx selection;
 
-  LTerm.render window mat >>= fun () ->
+  LTerm.render_update window displayed mat >>= fun () ->
   LTerm.goto window {LTerm_geom.row = 0; col = 0}
