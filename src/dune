@@ -1,0 +1,6 @@
+(executable
+ (name main)
+ (public_name oif)
+ (flags (:standard -safe-string))
+ (preprocess (pps lwt_ppx))
+ (libraries lambda-term unix camomile))

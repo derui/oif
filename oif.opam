@@ -1,0 +1,29 @@
+
+opam-version: "2.0"
+version: "0.2.0"
+maintainer: "derutakayu@gmail.com"
+authors: "derui"
+license: "MIT"
+homepage: "https://github.com/derui/oif"
+bug-reports: "https://github.com/derui/oif"
+dev-repo: "git+https://github.com/derui/oif"
+synopsis: "Deadly simple finder in terminal"
+tags: []
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name] {with-test}
+]
+depends: [
+  "dune" { >= "2.0.0"}
+  "lwt" { < "6.0.0"}
+  "lwt_ppx"
+  "lambda-term"
+  "camomile"
+  "alcotest" {with-test & < "2.0.0"}
+]
+available: ["ocaml" >= "4.05.0"]
+description: """
+Deadly simple finder that is able to use to find file from list, find branch from list, and more.
+
+This finder includes migemo implementation, so user can find japanese something with roma-ji.
+"""
