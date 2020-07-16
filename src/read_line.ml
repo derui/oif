@@ -14,6 +14,8 @@ class read_line ~term ~history:_ ~exit_code:_ _ =
 
     method current_selection () = React.S.value selection_s
 
+    method! show_box = false
+
     initializer
     let signal = Zed_string.of_utf8 "QUERY> " |> LTerm_text.of_string |> React.S.const in
     self#set_prompt signal;

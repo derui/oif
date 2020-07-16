@@ -34,6 +34,7 @@ let event_handler window term info () =
   render info
 
 let () =
+  ignore (new Widget_candidate_box.t ());
   let monad =
     let%lwt window = LTerm.create Lwt_unix.stdin Lwt_io.stdin Lwt_unix.stdout Lwt_io.stdout in
     let is_a_tty = LTerm.is_a_tty window in
