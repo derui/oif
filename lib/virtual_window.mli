@@ -44,5 +44,8 @@ val update_focused_row : int -> t -> t
 (** [update_focused_row focused_row t] update focused row that is 0 origin. This function effects start and end index of
     window. *)
 
+val update_view_port_size : int -> t -> t
+(** [update_view_size size t] update view port size to calculate window *)
+
 val calculate_window : t -> Window.t
 (** [calculate_window t] return a calculated window from total rows and focused row. *)
