@@ -25,13 +25,15 @@ let process_when_tty window is_a_tty =
 
 let make_info lines = Lwt.return @@ Types.Info.init lines
 
-let event_handler window term info () =
+let event_handler window _ _ () =
   let module I = Types.Info in
-  let render info' = Renderer.render window info'.Types.Info.candidates info'.Types.Info.selection in
-  let text = Zed_edit.text term#edit |> Zed_rope.to_string in
-  let info = Zed_string.to_utf8 text |> Filter.filter info in
-  let info = React.S.value term#selection |> Filter.update_selection info in
-  render info
+  (* let render info' = Renderer.render window info'.Types.Info.candidates info'.Types.Info.selection in
+   * let text = Zed_edit.text term#edit |> Zed_rope.to_string in
+   * let info = Zed_string.to_utf8 text |> Filter.filter info in
+   * let info = React.S.value term#selection |> Filter.update_selection info in
+   * render info *)
+  let%lwt window_size = LTerm.get_size window in
+  LTerm.render window (LTerm_draw.make_matrix window_size)
 
 let () =
   ignore (new Widget_candidate_box.t ());
@@ -40,16 +42,16 @@ let () =
     let is_a_tty = LTerm.is_a_tty window in
     let%lwt info = Lwt.(process_when_tty window is_a_tty >>= make_info) in
     let%lwt () = LTerm.clear_screen window in
-    let term = new Read_line.read_line ~term:window ~history:[] ~exit_code:0 info in
-    Renderer.render window info.Types.Info.candidates None;%lwt
+    let box = new Widget_candidate_box.t () in
+    let _ = new Widget_read_line.t ~term:window ~history:[] ~exit_code:0 info in
+    let term = new Main_widget.t ~box:(box :> LTerm_widget.t) () in
+    let%lwt window_size = LTerm.get_size window in
+    LTerm.render window (LTerm_draw.make_matrix window_size);%lwt
     LTerm.goto window { LTerm_geom.row = 0; col = 0 };%lwt
-    let select =
-      React.E.select
-        [ React.E.stamp (React.S.changes term#selection) (); React.E.stamp (Zed_edit.changes term#edit) () ]
-    in
+    let select = React.E.select [] in
     Lwt_react.E.keep select;
     let%lwt _ = Lwt_react.E.map_s (event_handler window term info) select |> Lwt.return in
-    term#run
+    LTerm_widget.run window term (Lwt.return @@ Zed_string.of_utf8 "")
   in
   let v = Lwt_main.run monad in
   Printf.printf "%s" @@ Zed_string.to_utf8 v

@@ -1,5 +1,6 @@
 open CamomileLibrary
 open Std
+module VW = Oif_lib.Virtual_window
 module Bindings = Zed_input.Make (LTerm_key)
 
 let selection_prefix = "-> "
@@ -15,6 +16,8 @@ class t () =
     inherit LTerm_widget.t "candidate_box"
 
     val mutable _candidates = React.S.const [||]
+
+    val mutable _virtual_window = VW.create ()
 
     method set_candidates signal = _candidates <- React.S.map (fun v -> Array.of_list v) signal
 
@@ -47,7 +50,12 @@ class t () =
       |> LTerm_draw.draw_string ctx 0 0 ~style:{ LTerm_style.none with foreground = Some LTerm_style.lred }
 
     method private render ctx candidates selection =
-      Array.to_list candidates |> List.filter ~f:Option.is_some
+      let size = LTerm_draw.size ctx in
+      _virtual_window <- VW.update_view_port_size size.rows _virtual_window;
+
+      let w = VW.calculate_window _virtual_window in
+      Array.sub candidates VW.Window.(start_index w) VW.Window.(end_index w)
+      |> Array.to_list |> List.filter ~f:Option.is_some
       |> List.iteri (fun index candidate ->
              match candidate with None -> () | Some candidate -> self#draw_candidate ctx index candidate);
 
