@@ -28,7 +28,7 @@ let make_info lines = Lwt.return @@ Types.Info.init lines
 let selection_event_handler box info text _ =
   let info = Filter.filter info text in
   let module I = Types.Info in
-  box#set_candidates @@ React.S.const info.I.candidates
+  box#set_candidates info.I.candidates
 
 let () =
   ignore (new Widget_candidate_box.t ());
@@ -40,7 +40,7 @@ let () =
     let read_line = new Widget_read_line.t () in
     let term = new Main_widget.t ~box:(box :> LTerm_widget.t) ~read_line:(read_line :> LTerm_widget.t) () in
     let%lwt window_size = LTerm.get_size window in
-    box#set_candidates @@ React.S.const info.Types.Info.candidates;
+    box#set_candidates info.Types.Info.candidates;
     LTerm.render window (LTerm_draw.make_matrix window_size);%lwt
     LTerm.goto window { LTerm_geom.row = 0; col = 0 };%lwt
 

@@ -12,17 +12,16 @@ type action =
 (** Implementation for the box to show candidate and navigate. *)
 class t () =
   let current_selection, _ = React.S.create 0 in
+  let candidates, set_candidates = React.S.create [||] in
   object (self)
     inherit LTerm_widget.t "candidate_box"
 
-    val mutable _candidates = React.S.const [||]
-
     val mutable _virtual_window = VW.create ()
 
-    method set_candidates signal = _candidates <- React.S.map (fun v -> Array.of_list v) signal
+    method set_candidates candidates = set_candidates @@ Array.of_list candidates
 
     method current_candidate =
-      React.S.l2 (fun candidates selection -> candidates.(selection)) _candidates current_selection
+      React.S.l2 (fun candidates selection -> candidates.(selection)) candidates current_selection
 
     val mutable bindings : action Bindings.t = Bindings.empty
 
@@ -39,7 +38,7 @@ class t () =
         let style =
           List.find styles ~f:(fun (i, _) -> i = index) |> function None -> None | Some (_, style) -> Some style
         in
-        LTerm_draw.draw_char ?style ctx l index (Zed_char.of_utf8 @@ Char.escaped @@ UChar.char_of c)
+        LTerm_draw.draw_char ?style ctx 0 index (Zed_char.of_utf8 @@ Char.escaped @@ UChar.char_of c)
       in
       C.iter_text ~f candidate |> ignore
 
@@ -51,7 +50,8 @@ class t () =
 
     method private render ctx candidates selection =
       let size = LTerm_draw.size ctx in
-      _virtual_window <- VW.update_view_port_size size.rows _virtual_window;
+      _virtual_window <-
+        VW.update_total_rows (Array.length candidates) _virtual_window |> VW.update_view_port_size size.rows;
 
       let w = VW.calculate_window _virtual_window in
       let len = VW.Window.(end_index w - start_index w) in
@@ -60,10 +60,10 @@ class t () =
       |> List.iteri (fun index candidate ->
              match candidate with None -> () | Some candidate -> self#draw_candidate ctx index candidate);
 
-      if Array.length candidates < 1 then self#draw_selection ctx selection else ()
+      if Array.length candidates > 0 then self#draw_selection ctx selection else ()
 
     method! draw ctx _ =
-      let candidates = React.S.value _candidates in
+      let candidates = React.S.value candidates in
       Lwt_react.S.map_s (fun selection -> self#render ctx candidates selection |> Lwt.return) current_selection
       |> Lwt.ignore_result
   end
