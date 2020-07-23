@@ -25,15 +25,10 @@ let process_when_tty window is_a_tty =
 
 let make_info lines = Lwt.return @@ Types.Info.init lines
 
-let event_handler window _ _ () =
+let selection_event_handler box info text _ =
+  let info = Filter.filter info text in
   let module I = Types.Info in
-  (* let render info' = Renderer.render window info'.Types.Info.candidates info'.Types.Info.selection in
-   * let text = Zed_edit.text term#edit |> Zed_rope.to_string in
-   * let info = Zed_string.to_utf8 text |> Filter.filter info in
-   * let info = React.S.value term#selection |> Filter.update_selection info in
-   * render info *)
-  let%lwt window_size = LTerm.get_size window in
-  LTerm.render window (LTerm_draw.make_matrix window_size)
+  box#set_candidates @@ React.S.const info.I.candidates
 
 let () =
   ignore (new Widget_candidate_box.t ());
@@ -41,17 +36,30 @@ let () =
     let%lwt window = LTerm.create Lwt_unix.stdin Lwt_io.stdin Lwt_unix.stdout Lwt_io.stdout in
     let is_a_tty = LTerm.is_a_tty window in
     let%lwt info = Lwt.(process_when_tty window is_a_tty >>= make_info) in
-    let%lwt () = LTerm.clear_screen window in
     let box = new Widget_candidate_box.t () in
-    let _ = new Widget_read_line.t ~term:window ~history:[] ~exit_code:0 info in
-    let term = new Main_widget.t ~box:(box :> LTerm_widget.t) () in
+    let read_line = new Widget_read_line.t () in
+    let term = new Main_widget.t ~box:(box :> LTerm_widget.t) ~read_line:(read_line :> LTerm_widget.t) () in
     let%lwt window_size = LTerm.get_size window in
+    box#set_candidates @@ React.S.const info.Types.Info.candidates;
     LTerm.render window (LTerm_draw.make_matrix window_size);%lwt
     LTerm.goto window { LTerm_geom.row = 0; col = 0 };%lwt
-    let select = React.E.select [] in
-    Lwt_react.E.keep select;
-    let%lwt _ = Lwt_react.E.map_s (event_handler window term info) select |> Lwt.return in
-    LTerm_widget.run window term (Lwt.return @@ Zed_string.of_utf8 "")
+
+    (* define event and handler *)
+    let change_text = React.S.changes read_line#text in
+    Lwt_react.E.keep change_text;
+    let change_candidate = React.S.changes box#current_candidate in
+    Lwt_react.E.keep change_candidate;
+    let%lwt _ =
+      Lwt_react.E.l2
+        (fun text candidate -> selection_event_handler box info text candidate)
+        change_text change_candidate
+      |> Lwt.return
+    in
+
+    let waiter, _ = Lwt.task () in
+    LTerm_widget.run window term waiter
   in
-  let v = Lwt_main.run monad in
-  Printf.printf "%s" @@ Zed_string.to_utf8 v
+  let _ = Lwt_main.run monad in
+  ()
+
+(* Printf.printf "%s" @@ Zed_string.to_utf8 v *)

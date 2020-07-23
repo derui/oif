@@ -54,7 +54,8 @@ class t () =
       _virtual_window <- VW.update_view_port_size size.rows _virtual_window;
 
       let w = VW.calculate_window _virtual_window in
-      Array.sub candidates VW.Window.(start_index w) VW.Window.(end_index w)
+      let len = VW.Window.(end_index w - start_index w) in
+      Array.sub candidates VW.Window.(start_index w) len
       |> Array.to_list |> List.filter ~f:Option.is_some
       |> List.iteri (fun index candidate ->
              match candidate with None -> () | Some candidate -> self#draw_candidate ctx index candidate);

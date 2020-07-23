@@ -49,7 +49,6 @@ let update_total_rows rows t =
   let view_port = if view_port_size < rows then t.view_port else (0, pred rows) in
   let focused_row = if t.focused_row <= pred rows then t.focused_row else pred rows in
   let t = { total_rows = max 0 rows; view_port; focused_row } in
-  show t |> print_endline;
   t
 
 let update_focused_row row t =
@@ -63,7 +62,6 @@ let update_focused_row row t =
     else (start_index, end_index)
   in
   let t = { t with view_port; focused_row } in
-  show t |> print_endline;
   t
 
 let update_view_port_size size t =
@@ -71,14 +69,13 @@ let update_view_port_size size t =
   let start_index, _ = t.view_port in
   let view_port_size = view_port_size t in
   let view_port =
-    if view_port_size >= size then (start_index, start_index + pred size)
-    else if size >= t.total_rows then (0, pred t.total_rows)
-    else if start_index + size > pred t.total_rows then (pred (t.total_rows - size), pred t.total_rows)
-    else (start_index, start_index + pred size)
+    if view_port_size >= size then (start_index, start_index + (max 0 @@ pred size))
+    else if size >= t.total_rows then (0, max 0 @@ pred t.total_rows)
+    else if start_index + size > pred t.total_rows then (pred (t.total_rows - size), max 0 @@ pred t.total_rows)
+    else (start_index, start_index + (max 0 @@ pred size))
   in
   let focused_row = max (fst view_port) @@ min (snd view_port) t.focused_row in
   let t = { t with view_port; focused_row } in
-  show t |> print_endline;
   t
 
 let calculate_window { total_rows; focused_row; view_port } =

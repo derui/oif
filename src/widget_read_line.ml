@@ -1,12 +1,50 @@
-class t ~term ~history:_ ~exit_code:_ _ =
+type prompt = LTerm_text.t
+
+type text = string
+
+class label text () =
+  object
+    inherit LTerm_widget.t "label"
+
+    val mutable _text = text
+
+    method text = text
+
+    method set_text v = _text <- v
+
+    method! size_request = LTerm_geom.{ rows = 0; cols = String.length _text }
+
+    method! draw ctx _ =
+      let text = LTerm_text.of_utf8 text in
+      let style = { LTerm_style.none with bold = Some true } in
+      Array.iteri (fun col (c, _) -> LTerm_draw.draw_char ctx 0 col ~style c) text
+  end
+
+class t ?(prompt = "QUERY> ") () =
+  let text_widget = new LTerm_edit.edit () in
+
+  let text_s, set_text = React.S.create "" in
+  let prompt_s, set_prompt = LTerm_text.of_utf8 "" |> React.S.create in
   object (self)
-    inherit LTerm_read_line.read_line ()
+    inherit LTerm_widget.hbox
 
-    inherit [Zed_string.t] LTerm_read_line.term term
+    method text = text_s
 
-    method! show_box = false
+    method prompt = prompt_s
+
+    method set_prompt v = set_prompt v
 
     initializer
-    let signal = Zed_string.of_utf8 "QUERY> " |> LTerm_text.of_string |> React.S.const in
-    self#set_prompt signal
+    let signal = Zed_string.of_utf8 prompt |> LTerm_text.of_string in
+    self#set_prompt signal;
+    React.E.select [ React.E.map ignore @@ Zed_edit.changes text_widget#engine ]
+    |> React.E.map (fun _ -> set_text @@ Zed_string.to_utf8 text_widget#text)
+    |> ignore;
+
+    self#on_event (fun e ->
+        text_widget#send_event e;
+        true);
+
+    self#add ~expand:false (new label prompt ());
+    self#add text_widget
   end

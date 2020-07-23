@@ -49,3 +49,6 @@ val update_view_port_size : int -> t -> t
 
 val calculate_window : t -> Window.t
 (** [calculate_window t] return a calculated window from total rows and focused row. *)
+
+val show : t -> string
+(** [show t] make string of [t]window *)
