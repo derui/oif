@@ -25,9 +25,11 @@ let process_when_tty window is_a_tty =
 
 let make_info lines = Lwt.return @@ Types.Info.init lines
 
-let selection_event_handler box info text _ =
+let selection_event_handler box info text =
   let candidates = Filter.filter info text |> List.filter ~f:Option.is_some |> List.map ~f:Option.get in
   box#set_candidates candidates
+
+let confirm_candidate_handler wakener candidate = Lwt.wakeup wakener @@ Option.map Types.Candidate.text candidate
 
 let () =
   let monad =
@@ -44,16 +46,20 @@ let () =
 
     (* define event and handler *)
     let () =
-      Lwt_react.S.l2 (fun text candidate -> (text, candidate)) read_line#text box#current_candidate
-      |> React.S.changes
-      |> React.E.map (fun (text, candidate) -> selection_event_handler box info text candidate)
+      React.S.changes read_line#text
+      |> React.E.map (fun text -> selection_event_handler box info text)
       |> Lwt_react.E.keep
     in
+    let waiter, wakener = Lwt.task () in
+    let () =
+      React.S.changes box#current_candidate |> React.E.map (confirm_candidate_handler wakener) |> Lwt_react.E.keep
+    in
 
-    let waiter, _ = Lwt.task () in
     LTerm_widget.run window term waiter
   in
-  let _ = Lwt_main.run monad in
-  ()
-
-(* Printf.printf "%s" @@ Zed_string.to_utf8 v *)
+  let result = Lwt_main.run monad in
+  match result with
+  | None   -> exit 1
+  | Some v ->
+      print_string v;
+      exit 0

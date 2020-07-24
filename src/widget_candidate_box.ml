@@ -8,11 +8,13 @@ let selection_prefix = "-> "
 type action =
   | Next_candidate
   | Prev_candidate
+  | Confirm_candidate
 
 (** Implementation for the box to show candidate and navigate. *)
 class t () =
   let current_selection, set_selection = React.S.create 0 in
   let candidates, set_candidates = React.S.create [||] in
+  let current_candidate, set_current_candidate = React.S.create ~eq:(fun _ _ -> false) None in
   object (self)
     inherit LTerm_widget.t "candidate_box"
 
@@ -20,10 +22,7 @@ class t () =
 
     method set_candidates candidates = set_candidates @@ Array.of_list candidates
 
-    method current_candidate =
-      React.S.l2
-        (fun candidates selection -> if selection >= Array.length candidates then None else Some candidates.(selection))
-        candidates current_selection
+    method current_candidate = current_candidate
 
     val mutable bindings : action Bindings.t = Bindings.empty
 
@@ -58,8 +57,10 @@ class t () =
 
       let w = VW.calculate_window _virtual_window in
       let len = succ @@ VW.Window.(end_index w - start_index w) in
-      Array.sub candidates VW.Window.(start_index w) len
-      |> Array.iteri (fun index candidate -> self#draw_candidate ctx index candidate);
+      if Array.length candidates <= 0 then ()
+      else
+        Array.sub candidates VW.Window.(start_index w) len
+        |> Array.iteri (fun index candidate -> self#draw_candidate ctx index candidate);
 
       if Array.length candidates > 0 then self#draw_selection ctx selection else ()
 
@@ -70,11 +71,15 @@ class t () =
 
     method private exec action =
       let candidate_size = React.S.value candidates |> Array.length |> pred in
-      if candidate_size <= 0 then ()
-      else
-        match action with
-        | Next_candidate -> set_selection (min candidate_size @@ (React.S.value current_selection |> succ))
-        | Prev_candidate -> set_selection (max 0 @@ (React.S.value current_selection |> pred))
+      match action with
+      | Next_candidate    ->
+          if candidate_size <= 0 then ()
+          else set_selection (min candidate_size @@ (React.S.value current_selection |> succ))
+      | Prev_candidate    ->
+          if candidate_size <= 0 then () else set_selection (max 0 @@ (React.S.value current_selection |> pred))
+      | Confirm_candidate ->
+          let candidates = React.S.value candidates and selection = React.S.value current_selection in
+          set_current_candidate (if selection >= Array.length candidates then None else Some candidates.(selection))
 
     method private handle_event event =
       match event with
@@ -100,5 +105,9 @@ class t () =
     self#bind
       (let open LTerm_key in
       { control = true; meta = false; shift = false; code = Char (UChar.of_char 'p') })
-      Prev_candidate
+      Prev_candidate;
+    self#bind
+      (let open LTerm_key in
+      { control = false; meta = false; shift = false; code = Enter })
+      Confirm_candidate
   end

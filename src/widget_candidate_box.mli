@@ -1,6 +1,7 @@
 type action =
   | Next_candidate
   | Prev_candidate
+  | Confirm_candidate
 
 (** Implementation for the box to show candidate and navigate. *)
 class t :
