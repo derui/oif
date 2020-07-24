@@ -26,12 +26,10 @@ let process_when_tty window is_a_tty =
 let make_info lines = Lwt.return @@ Types.Info.init lines
 
 let selection_event_handler box info text _ =
-  let info = Filter.filter info text in
-  let module I = Types.Info in
-  box#set_candidates info.I.candidates
+  let candidates = Filter.filter info text |> List.filter ~f:Option.is_some |> List.map ~f:Option.get in
+  box#set_candidates candidates
 
 let () =
-  ignore (new Widget_candidate_box.t ());
   let monad =
     let%lwt window = LTerm.create Lwt_unix.stdin Lwt_io.stdin Lwt_unix.stdout Lwt_io.stdout in
     let is_a_tty = LTerm.is_a_tty window in
@@ -40,20 +38,16 @@ let () =
     let read_line = new Widget_read_line.t () in
     let term = new Main_widget.t ~box:(box :> LTerm_widget.t) ~read_line:(read_line :> LTerm_widget.t) () in
     let%lwt window_size = LTerm.get_size window in
-    box#set_candidates info.Types.Info.candidates;
+    box#set_candidates @@ Types.Info.to_candidates info;
     LTerm.render window (LTerm_draw.make_matrix window_size);%lwt
     LTerm.goto window { LTerm_geom.row = 0; col = 0 };%lwt
 
     (* define event and handler *)
-    let change_text = React.S.changes read_line#text in
-    Lwt_react.E.keep change_text;
-    let change_candidate = React.S.changes box#current_candidate in
-    Lwt_react.E.keep change_candidate;
-    let%lwt _ =
-      Lwt_react.E.l2
-        (fun text candidate -> selection_event_handler box info text candidate)
-        change_text change_candidate
-      |> Lwt.return
+    let () =
+      Lwt_react.S.l2 (fun text candidate -> (text, candidate)) read_line#text box#current_candidate
+      |> React.S.changes
+      |> React.E.map (fun (text, candidate) -> selection_event_handler box info text candidate)
+      |> Lwt_react.E.keep
     in
 
     let waiter, _ = Lwt.task () in

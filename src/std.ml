@@ -1,5 +1,7 @@
 (* simple standard library *)
 
+let id v = v
+
 module List = struct
   include Stdlib.List
 
