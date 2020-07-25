@@ -6,7 +6,7 @@ module ReIntf = DF.Camomile.UReStr
 module Re = ReIntf.Make (UTF8)
 module CaseMap = DF.Camomile.CaseMap.Make (UTF8)
 
-let matched_style = { LTerm_style.none with LTerm_style.reverse = Some true }
+let matched_style = { LTerm_style.none with LTerm_style.foreground = Some LTerm_style.cyan }
 
 let decorate_to_match text candidate =
   match UTF8.length text with

@@ -1,5 +1,7 @@
 (* simple standard library *)
 
+let id v = v
+
 module List = struct
   include Stdlib.List
 
@@ -17,6 +19,8 @@ module List = struct
 
   let map ~f lst = Stdlib.List.map f lst
 
+  let filter ~f lst = Stdlib.List.filter f lst
+
   let fold_left ~f ~init lst = Stdlib.List.fold_left f init lst
 
   let find ~f lst = Stdlib.List.find_opt f lst
@@ -24,4 +28,10 @@ module List = struct
   let find_exn ~f lst = Stdlib.List.find f lst
 
   let iter ~f lst = Stdlib.List.iter f lst
+end
+
+module Seq = struct
+  include Stdlib.Seq
+
+  let filter ~f seq = Stdlib.Seq.filter f seq
 end

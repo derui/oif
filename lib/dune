@@ -1,0 +1,3 @@
+(library
+ (name oif_lib)
+ (flags (:standard -safe-string)))

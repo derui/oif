@@ -53,27 +53,20 @@ end = struct
     List.iter range ~f
 end
 
-type candidates = Candidate.t option list
+type candidates = Candidate.t list
 
 (* The candidates for filtering *)
 
 (* Infomations to filtering candidates. *)
 module Info = struct
   type t = {
-    mutable selection : selection option;
-    mutable text : UTF8.t;
-    mutable candidates : candidates;
+    mutable current_candidate : string option;
     mutable lines : UTF8.t list;
-    mutable changed : bool;
   }
 
-  let set_text t text =
-    let current = t.text in
-    t.text <- text;
-    t.changed <- text <> current;
-    t
+  let empty = { current_candidate = None; lines = [] }
 
-  let empty = { selection = None; text = ""; candidates = []; lines = []; changed = false }
+  let to_candidates info = List.map info.lines ~f:Candidate.make
 
-  let init lines = { empty with candidates = List.map lines ~f:Candidate.make |> List.map ~f:Option.some; lines }
+  let init lines = { empty with lines }
 end

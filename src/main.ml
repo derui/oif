@@ -14,41 +14,52 @@ let load_lines channel =
       read_lines channel [])
     (fun _ -> return [])
 
-let process_when_tty window is_a_tty =
-  if is_a_tty then Lwt.return []
-  else
-    let%lwt lines = load_lines Lwt_io.stdin in
-    let%lwt tty_fd = open_tty "/dev/tty" in
-    let in_chan = Lwt_io.of_fd ~mode:Lwt_io.input tty_fd in
-    let%lwt () = LTerm.set_io ~incoming_fd:tty_fd ~incoming_channel:in_chan window in
-    Lwt.return lines
+let process_when_tty () =
+  let%lwt lines = load_lines Lwt_io.stdin in
+  Lwt.return lines
 
 let make_info lines = Lwt.return @@ Types.Info.init lines
 
-let event_handler window term info () =
-  let module I = Types.Info in
-  let render info' = Renderer.render window info'.Types.Info.candidates info'.Types.Info.selection in
-  let text = Zed_edit.text term#edit |> Zed_rope.to_string in
-  let info = Zed_string.to_utf8 text |> Filter.filter info in
-  let info = React.S.value term#selection |> Filter.update_selection info in
-  render info
+let selection_event_handler box info text =
+  let candidates = Filter.filter info text |> List.filter ~f:Option.is_some |> List.map ~f:Option.get in
+  box#set_candidates candidates
+
+let confirm_candidate_handler wakener candidate = Lwt.wakeup wakener @@ Option.map Types.Candidate.text candidate
+
+let create_window () =
+  let%lwt tty_fd = open_tty "/dev/tty" in
+  let in_chan = Lwt_io.of_fd ~mode:Lwt_io.input tty_fd in
+  let out_chan = Lwt_io.of_fd ~mode:Lwt_io.output tty_fd in
+  LTerm.create tty_fd in_chan tty_fd out_chan
 
 let () =
   let monad =
-    let%lwt window = LTerm.create Lwt_unix.stdin Lwt_io.stdin Lwt_unix.stdout Lwt_io.stdout in
-    let is_a_tty = LTerm.is_a_tty window in
-    let%lwt info = Lwt.(process_when_tty window is_a_tty >>= make_info) in
-    let%lwt () = LTerm.clear_screen window in
-    let term = new Read_line.read_line ~term:window ~history:[] ~exit_code:0 info in
-    Renderer.render window info.Types.Info.candidates None;%lwt
+    let%lwt info = Lwt.(process_when_tty () >>= make_info) in
+    let%lwt window = create_window () in
+    let box = new Widget_candidate_box.t () in
+    let read_line = new Widget_read_line.t () in
+    let term = new Main_widget.t ~box:(box :> LTerm_widget.t) ~read_line:(read_line :> LTerm_widget.t) () in
+    let%lwt window_size = LTerm.get_size window in
+    box#set_candidates @@ Types.Info.to_candidates info;
+    LTerm.render window (LTerm_draw.make_matrix window_size);%lwt
     LTerm.goto window { LTerm_geom.row = 0; col = 0 };%lwt
-    let select =
-      React.E.select
-        [ React.E.stamp (React.S.changes term#selection) (); React.E.stamp (Zed_edit.changes term#edit) () ]
+
+    (* define event and handler *)
+    let () =
+      React.S.changes read_line#text
+      |> React.E.map (fun text -> selection_event_handler box info text)
+      |> Lwt_react.E.keep
     in
-    Lwt_react.E.keep select;
-    let%lwt _ = Lwt_react.E.map_s (event_handler window term info) select |> Lwt.return in
-    term#run
+    let waiter, wakener = Lwt.task () in
+    let () =
+      React.S.changes box#current_candidate |> React.E.map (confirm_candidate_handler wakener) |> Lwt_react.E.keep
+    in
+
+    LTerm_widget.run window term waiter
   in
-  let v = Lwt_main.run monad in
-  Printf.printf "%s" @@ Zed_string.to_utf8 v
+  let result = Lwt_main.run monad in
+  match result with
+  | None   -> exit 1
+  | Some v ->
+      print_string v;
+      exit 0

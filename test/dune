@@ -1,0 +1,9 @@
+(alias
+ (name    runtest)
+ (deps    oif_lib_tests.exe)
+ (action  (run %{deps})))
+
+(executable
+ (name oif_lib_tests)
+ (flags (-safe-string))
+ (libraries oif_lib alcotest))
