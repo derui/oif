@@ -20,7 +20,11 @@ class t () =
 
     val mutable _virtual_window = VW.create ()
 
-    method set_candidates candidates = set_candidates @@ Array.of_list candidates
+    method set_candidates candidates =
+      let new_candidate_size = List.length candidates in
+      set_candidates @@ Array.of_list candidates;
+      let selection = React.S.value current_selection in
+      if new_candidate_size <= selection then set_selection (max 0 @@ min (pred new_candidate_size) selection) else ()
 
     method current_candidate = current_candidate
 
