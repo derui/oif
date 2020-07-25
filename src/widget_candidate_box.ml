@@ -28,7 +28,7 @@ class t () =
 
     method bind key action = bindings <- Bindings.add [ key ] action bindings
 
-    method private draw_candidate ctx l candidate =
+    method private draw_candidate ctx l selected candidate =
       let module C = Types.Candidate in
       let size = LTerm_draw.size ctx in
       let rect =
@@ -37,9 +37,11 @@ class t () =
       let ctx = LTerm_draw.sub ctx rect in
       let f index c styles =
         let style =
-          List.find styles ~f:(fun (i, _) -> i = index) |> function None -> None | Some (_, style) -> Some style
+          List.find styles ~f:(fun (i, _) -> i = index) |> function
+          | None            -> if selected then { LTerm_style.none with bold = Some true } else LTerm_style.none
+          | Some (_, style) -> if selected then { style with bold = Some true } else style
         in
-        LTerm_draw.draw_char ?style ctx 0 index (Zed_char.of_utf8 @@ Char.escaped @@ UChar.char_of c)
+        LTerm_draw.draw_char ~style ctx 0 index (Zed_char.of_utf8 @@ Char.escaped @@ UChar.char_of c)
       in
       C.iter_text ~f candidate |> ignore
 
@@ -60,7 +62,7 @@ class t () =
       if Array.length candidates <= 0 then ()
       else
         Array.sub candidates VW.Window.(start_index w) len
-        |> Array.iteri (fun index candidate -> self#draw_candidate ctx index candidate);
+        |> Array.iteri (fun index candidate -> self#draw_candidate ctx index (index = selection) candidate);
 
       if Array.length candidates > 0 then self#draw_selection ctx selection else ()
 
