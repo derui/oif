@@ -33,6 +33,8 @@ let create_window () =
   LTerm.create tty_fd in_chan tty_fd out_chan
 
 let () =
+  let option = ref Cli_option.empty in
+  let () = Cli_option.parse (fun v -> option := v) in
   let monad =
     let%lwt info = Lwt.(process_when_tty () >>= make_info) in
     let%lwt window = create_window () in

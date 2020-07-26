@@ -19,6 +19,7 @@ depends: [
   "lwt_ppx"
   "lambda-term"
   "camomile"
+  "cmdliner" {< "2.0.0"}
   "alcotest" {with-test & < "2.0.0"}
 ]
 available: ["ocaml" >= "4.05.0"]
