@@ -39,15 +39,8 @@ class t () =
         { LTerm_geom.row1 = l; row2 = l + 1; col1 = String.length selection_prefix; col2 = LTerm_geom.cols size }
       in
       let ctx = LTerm_draw.sub ctx rect in
-      let f index c styles =
-        let style =
-          List.find styles ~f:(fun (i, _) -> i = index) |> function
-          | None            -> if selected then { LTerm_style.none with bold = Some true } else LTerm_style.none
-          | Some (_, style) -> if selected then { style with bold = Some true } else style
-        in
-        LTerm_draw.draw_char ~style ctx 0 index (Zed_char.of_utf8 @@ Char.escaped @@ UChar.char_of c)
-      in
-      C.iter_text ~f candidate |> ignore
+      let text = C.make_styled_text selected candidate in
+      LTerm_draw.draw_styled ctx 0 0 text
 
     method private draw_selection ctx row =
       let rect = { LTerm_geom.row1 = row; row2 = row + 1; col1 = 0; col2 = String.length selection_prefix } in
