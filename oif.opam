@@ -19,6 +19,8 @@ depends: [
   "lwt_ppx"
   "lambda-term"
   "camomile"
+  "re"
+  "migemocaml" {< "0.3.0"}
   "cmdliner" {< "2.0.0"}
   "alcotest" {with-test & < "2.0.0"}
 ]
