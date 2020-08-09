@@ -8,6 +8,7 @@ module CaseMap = DF.Camomile.CaseMap.Make (UTF8)
 let matched_style = { LTerm_style.none with LTerm_style.foreground = Some LTerm_style.cyan }
 
 let decorate_to_match text candidate =
+  let text = Option.value ~default:"" text in
   match UTF8.length text with
   | 0 -> Some (C.make candidate)
   | _ -> (
