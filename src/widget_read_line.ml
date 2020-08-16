@@ -6,7 +6,7 @@ type text = string
 
 class label text () =
   object
-    inherit LTerm_widget.t "label"
+    inherit LTerm_widget.t "oif:read_line:label"
 
     val mutable _text = text
 
@@ -14,7 +14,7 @@ class label text () =
 
     method set_text v = _text <- v
 
-    method! size_request = LTerm_geom.{ rows = 0; cols = String.length _text }
+    method! size_request = LTerm_geom.{ rows = 1; cols = String.length _text }
 
     method! draw ctx _ =
       let text = LTerm_text.of_utf8 text in

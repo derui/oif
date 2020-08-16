@@ -16,7 +16,7 @@ class t () =
   let candidates, set_candidates = React.S.create [||] in
   let current_candidate, set_current_candidate = React.S.create ~eq:(fun _ _ -> false) None in
   object (self)
-    inherit LTerm_widget.t "candidate_box"
+    inherit LTerm_widget.t "oif:candidate_box"
 
     val mutable _virtual_window = VW.create ()
 

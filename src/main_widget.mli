@@ -6,6 +6,7 @@ type filter =
 class t :
   box:LTerm_widget.t
   -> read_line:LTerm_widget.t
+  -> information_line:LTerm_widget.t
   -> unit
   -> object
        inherit LTerm_widget.vbox

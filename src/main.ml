@@ -1,5 +1,7 @@
 open Std
 
+let name_of_filter = function Main_widget.Partial_match -> "Partial match" | Main_widget.Migemo -> "Migemo"
+
 module App_state = struct
   type t = {
     mutable current_filter : (module Filter.S);
@@ -8,12 +10,14 @@ module App_state = struct
 
   let find_filter t name = List.find ~f:(fun (module F : Filter.S) -> F.unique_name = name) t.available_filters
 
-  let change_filter t = function
-    | Main_widget.Partial_match ->
-        let filter_name = "Partial match" in
+  let change_filter t information_line = function
+    | Main_widget.Partial_match as v ->
+        let filter_name = name_of_filter v in
+        information_line#set_filter_name filter_name;
         find_filter t filter_name |> Option.iter (fun filter -> t.current_filter <- filter)
-    | Main_widget.Migemo        ->
-        let filter_name = "Migemo" in
+    | Main_widget.Migemo as v        ->
+        let filter_name = name_of_filter v in
+        information_line#set_filter_name filter_name;
         find_filter t filter_name |> Option.iter (fun filter -> t.current_filter <- filter)
 end
 
@@ -51,10 +55,10 @@ let load_migemo_filter option =
   |> Option.map (fun dict_dir ->
          Migemocaml.Migemo.make_from_dir ~spec:(module Migemocaml.Regexp_spec.OCaml_str) ~base_dir:dict_dir ())
   |> Option.join
-  |> Option.map (fun migemo ->
+  |> Option.map (fun migemo : (module Filter.S) ->
          ( module Filter.Migemo (struct
            let migemo = migemo
-         end) : Filter.S ))
+         end) ))
   |> Option.to_list
 
 let create_window () =
@@ -75,15 +79,27 @@ let () =
         let%lwt info = Lwt.(process_when_tty () >>= make_info) in
         let%lwt window = create_window () in
         let box = new Widget_candidate_box.t () in
+        let information_line = new Widget_information_line.t () in
         let read_line = new Widget_read_line.t () in
-        let term = new Main_widget.t ~box:(box :> LTerm_widget.t) ~read_line:(read_line :> LTerm_widget.t) () in
+        let term =
+          new Main_widget.t
+            ~box:(box :> LTerm_widget.t)
+            ~read_line:(read_line :> LTerm_widget.t)
+            ~information_line:(information_line :> LTerm_widget.t)
+            ()
+        in
         let%lwt window_size = LTerm.get_size window in
-        box#set_candidates @@ Types.Info.to_candidates info;
+        let candidates = Types.Info.to_candidates info in
+        box#set_candidates candidates;
+        information_line#set_number_of_candidates @@ List.length candidates;
+        information_line#set_filter_name @@ name_of_filter Main_widget.Partial_match;
         LTerm.render window (LTerm_draw.make_matrix window_size);%lwt
         LTerm.goto window { LTerm_geom.row = 0; col = 0 };%lwt
 
         let () =
-          React.S.changes term#switch_filter |> React.E.map (change_filter_handler app_state) |> Lwt_react.E.keep
+          React.S.changes term#switch_filter
+          |> React.E.map (change_filter_handler app_state information_line)
+          |> Lwt_react.E.keep
         in
 
         (* define event and handler *)

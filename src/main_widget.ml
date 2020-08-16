@@ -9,7 +9,7 @@ type action = Change_filter
 module Bindings = Zed_input.Make (LTerm_key)
 
 (** Implementation for main widget. *)
-class t ~box ~read_line () =
+class t ~box ~read_line ~information_line () =
   let switch_filter, set_switcn_filter = React.S.create Partial_match in
   object (self)
     inherit LTerm_widget.vbox
@@ -51,6 +51,7 @@ class t ~box ~read_line () =
 
     self#add ~expand:false (new LTerm_widget.hline);
     self#add ~expand:false read_line;
+    self#add ~expand:false information_line;
     self#add ~expand:true box;
 
     self#bind
