@@ -3,7 +3,7 @@ This tool is small program as finder, such like fzf, peco.
 
 # TODO #
 - [ ] Do work default query
-- [ ] Suppress error when editor is empty
+- [x] Suppress error when editor is empty
 
 # Install #
 

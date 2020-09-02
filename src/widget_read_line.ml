@@ -22,7 +22,7 @@ class label text () =
       Array.iteri (fun col (c, _) -> LTerm_draw.draw_char ctx 0 col ~style c) text
   end
 
-class t ?(prompt = "QUERY> ") () =
+class t ?(prompt = "QUERY> ") ?(query = "") () =
   let text_widget = new LTerm_edit.edit () in
 
   let text_s, set_text = React.S.create "" in
@@ -39,6 +39,8 @@ class t ?(prompt = "QUERY> ") () =
     val mutable _text_event = React.E.create () |> fst
 
     initializer
+    Zed_edit.insert text_widget#context @@ Zed_rope.of_string @@ Zed_string.of_utf8 query;
+
     let signal = Zed_string.of_utf8 prompt |> LTerm_text.of_string in
     self#set_prompt signal;
     _text_event <-
