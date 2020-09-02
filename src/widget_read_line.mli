@@ -4,6 +4,7 @@ type text = string
 
 class t :
   ?prompt:string
+  -> ?query:string
   -> unit
   -> object
        inherit LTerm_widget.hbox

@@ -41,9 +41,13 @@ let process_when_tty () =
 
 let make_info lines = Lwt.return @@ Types.Info.init lines
 
+let filter_candidate app_state info text =
+  let module F = (val app_state.App_state.current_filter) in
+  F.filter ~info ~text
+
 let selection_event_handler app_state box info text =
   let module F = (val app_state.App_state.current_filter) in
-  let candidates = F.filter ~info ~text in
+  let candidates = filter_candidate app_state info text in
   box#set_candidates candidates
 
 let confirm_candidate_handler wakener candidate = Lwt.wakeup wakener @@ Option.map Types.Candidate.text candidate
@@ -80,7 +84,7 @@ let () =
         let%lwt window = create_window () in
         let box = new Widget_candidate_box.t () in
         let information_line = new Widget_information_line.t () in
-        let read_line = new Widget_read_line.t () in
+        let read_line = new Widget_read_line.t ?query:option.query () in
         let term =
           new Main_widget.t
             ~box:(box :> LTerm_widget.t)
@@ -89,7 +93,10 @@ let () =
             ()
         in
         let%lwt window_size = LTerm.get_size window in
-        let candidates = Types.Info.to_candidates info in
+        let candidates =
+          Types.Info.to_candidates info |> fun candidates ->
+          match option.query with None -> candidates | Some v -> filter_candidate app_state info v
+        in
         box#set_candidates candidates;
         information_line#set_number_of_candidates @@ List.length candidates;
         information_line#set_filter_name @@ name_of_filter Main_widget.Partial_match;
