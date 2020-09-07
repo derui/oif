@@ -2,8 +2,7 @@
 This tool is small program as finder, such like fzf, peco.
 
 # TODO #
-- [ ] Do work default query
-- [x] Suppress error when editor is empty
+- [ ] Be able to search with multi words. 
 
 # Install #
 
