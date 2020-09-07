@@ -92,7 +92,6 @@ let () =
             ~information_line:(information_line :> LTerm_widget.t)
             ()
         in
-        let%lwt window_size = LTerm.get_size window in
         let candidates =
           Types.Info.to_candidates info |> fun candidates ->
           match option.query with None -> candidates | Some v -> filter_candidate app_state info v
@@ -100,8 +99,6 @@ let () =
         box#set_candidates candidates;
         information_line#set_number_of_candidates @@ List.length candidates;
         information_line#set_filter_name @@ name_of_filter Main_widget.Partial_match;
-        LTerm.render window (LTerm_draw.make_matrix window_size);%lwt
-        LTerm.goto window { LTerm_geom.row = 0; col = 0 };%lwt
 
         let () =
           React.S.changes term#switch_filter

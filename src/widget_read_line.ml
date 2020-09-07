@@ -22,8 +22,21 @@ class label text () =
       Array.iteri (fun col (c, _) -> LTerm_draw.draw_char ctx 0 col ~style c) text
   end
 
+class text_widget () =
+  object
+    inherit LTerm_edit.edit () as super
+
+    method! draw ctx _focused =
+      super#draw ctx _focused;
+      match super#cursor_position with
+      | None              -> ()
+      | Some { col; row } ->
+          let ctx = LTerm_draw.sub ctx { LTerm_geom.row1 = row; row2 = row + 1; col1 = col; col2 = col + 1 } in
+          LTerm_draw.fill_style ctx LTerm_style.{ none with reverse = Some true }
+  end
+
 class t ?(prompt = "QUERY> ") ?(query = "") () =
-  let text_widget = new LTerm_edit.edit () in
+  let text_widget = new text_widget () in
 
   let text_s, set_text = React.S.create "" in
   let prompt_s, set_prompt = LTerm_text.of_utf8 "" |> React.S.create in
