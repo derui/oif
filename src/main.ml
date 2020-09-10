@@ -1,5 +1,10 @@
 open Std
 
+type exit_status =
+  | Confirm              of string
+  | Confirmed_with_empty
+  | Quit
+
 let name_of_filter = function Main_widget.Partial_match -> "Partial match" | Main_widget.Migemo -> "Migemo"
 
 module App_state = struct
@@ -45,14 +50,21 @@ let filter_candidate app_state info text =
   let module F = (val app_state.App_state.current_filter) in
   F.filter ~info ~text
 
+(* event handlers *)
+
 let selection_event_handler app_state box info text =
   let module F = (val app_state.App_state.current_filter) in
   let candidates = filter_candidate app_state info text in
   box#set_candidates candidates
 
-let confirm_candidate_handler wakener candidate = Lwt.wakeup wakener @@ Option.map Types.Candidate.text candidate
+let confirm_candidate_handler wakener candidate =
+  match Option.map Types.Candidate.text candidate with
+  | None   -> Lwt.wakeup_later wakener Confirmed_with_empty
+  | Some v -> Lwt.wakeup_later wakener (Confirm v)
 
 let change_filter_handler app_state filter = App_state.change_filter app_state filter
+
+let quit_handler wakener = function false -> () | true -> Lwt.wakeup_later wakener Quit
 
 let load_migemo_filter option =
   option.Cli_option.migemo_dict_directory
@@ -100,19 +112,19 @@ let () =
         information_line#set_number_of_candidates @@ List.length candidates;
         information_line#set_filter_name @@ name_of_filter Main_widget.Partial_match;
 
-        let () =
-          React.S.changes term#switch_filter
-          |> React.E.map (change_filter_handler app_state information_line)
-          |> Lwt_react.E.keep
-        in
-
         (* define event and handler *)
         let () =
           React.S.changes read_line#text
           |> React.E.map (fun text -> selection_event_handler app_state box info text)
           |> Lwt_react.E.keep
         in
+        let () =
+          React.S.changes term#switch_filter
+          |> React.E.map (change_filter_handler app_state information_line)
+          |> Lwt_react.E.keep
+        in
         let waiter, wakener = Lwt.task () in
+        let () = React.S.changes term#quit |> React.E.map (quit_handler wakener) |> Lwt_react.E.keep in
         let () =
           React.S.changes box#current_candidate |> React.E.map (confirm_candidate_handler wakener) |> Lwt_react.E.keep
         in
@@ -121,7 +133,8 @@ let () =
       in
       let result = Lwt_main.run monad in
       match result with
-      | None   -> exit 1
-      | Some v ->
+      | Quit                 -> exit 130
+      | Confirmed_with_empty -> exit 1
+      | Confirm v            ->
           print_string v;
           exit 0)

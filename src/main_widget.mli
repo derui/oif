@@ -12,4 +12,6 @@ class t :
        inherit LTerm_widget.vbox
 
        method switch_filter : filter React.signal
+
+       method quit : bool React.signal
      end

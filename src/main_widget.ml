@@ -4,19 +4,24 @@ type filter =
   | Partial_match
   | Migemo
 
-type action = Change_filter
+type action =
+  | Change_filter
+  | Quit
 
 module Bindings = Zed_input.Make (LTerm_key)
 
 (** Implementation for main widget. *)
 class t ~box ~read_line ~information_line () =
   let switch_filter, set_switcn_filter = React.S.create Partial_match in
+  let quit, set_quit = React.S.create false in
   object (self)
     inherit LTerm_widget.vbox
 
     val mutable bindings : action Bindings.t = Bindings.empty
 
     method switch_filter = switch_filter
+
+    method quit = quit
 
     method private bind key action = bindings <- Bindings.add [ key ] action bindings
 
@@ -29,6 +34,7 @@ class t ~box ~read_line ~information_line () =
           match current_filter with
           | Partial_match -> set_switcn_filter Migemo
           | Migemo        -> set_switcn_filter Partial_match )
+      | Quit          -> set_quit true
 
     method private handle_event event =
       match event with
@@ -43,11 +49,11 @@ class t ~box ~read_line ~information_line () =
 
     initializer
     self#on_event (fun e ->
-        if self#handle_event e then true
+        if self#handle_event e then false
         else (
           box#send_event e;
           read_line#send_event e;
-          true ));
+          false ));
 
     self#add ~expand:false (new LTerm_widget.hline);
     self#add ~expand:false read_line;
@@ -57,5 +63,13 @@ class t ~box ~read_line ~information_line () =
     self#bind
       (let open LTerm_key in
       { control = true; meta = false; shift = false; code = Char (UChar.of_char 'q') })
-      Change_filter
+      Change_filter;
+    self#bind
+      (let open LTerm_key in
+      { control = true; meta = false; shift = false; code = Char (UChar.of_char 'c') })
+      Quit;
+    self#bind
+      (let open LTerm_key in
+      { control = true; meta = false; shift = false; code = Char (UChar.of_char 'g') })
+      Quit
   end
