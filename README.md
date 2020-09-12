@@ -2,7 +2,8 @@
 This tool is small program as finder, such like fzf, peco.
 
 # TODO #
-- [ ] Be able to search with multi words. 
+- [X] Be able to search with multi words.
+- [ ] Read from input asynchronously
 
 # Install #
 
