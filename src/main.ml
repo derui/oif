@@ -129,7 +129,11 @@ let () =
           React.S.changes box#current_candidate |> React.E.map (confirm_candidate_handler wakener) |> Lwt_react.E.keep
         in
 
-        LTerm_widget.run window term waiter
+        let%lwt mode = LTerm.enter_raw_mode window in
+        try%lwt LTerm_widget.run window term waiter
+        with _ ->
+          let%lwt () = LTerm.leave_raw_mode window mode in
+          Lwt.return Quit
       in
       let result = Lwt_main.run monad in
       match result with

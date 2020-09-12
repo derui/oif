@@ -64,15 +64,18 @@ class t ?(prompt = "QUERY> ") ?(query = "") () =
         text_widget#send_event e;
         true);
 
-    LTerm_edit.unbind
+    LTerm_edit.bind
       (let open LTerm_key in
-      [ { control = true; meta = false; shift = false; code = Char (UChar.of_char 'p') } ]);
-    LTerm_edit.unbind
+      [ { control = true; meta = false; shift = false; code = Char (UChar.of_char 'p') } ])
+      [];
+    LTerm_edit.bind
       (let open LTerm_key in
-      [ { control = true; meta = false; shift = false; code = Char (UChar.of_char 'n') } ]);
-    LTerm_edit.unbind
+      [ { control = true; meta = false; shift = false; code = Char (UChar.of_char 'n') } ])
+      [];
+    LTerm_edit.bind
       (let open LTerm_key in
-      [ { control = false; meta = false; shift = false; code = Enter } ]);
+      [ { control = false; meta = false; shift = false; code = Enter } ])
+      [];
 
     self#add ~expand:false (new label prompt ());
     self#add text_widget
