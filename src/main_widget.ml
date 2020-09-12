@@ -49,11 +49,11 @@ class t ~box ~read_line ~information_line () =
 
     initializer
     self#on_event (fun e ->
-        if self#handle_event e then false
+        if self#handle_event e then true
         else (
           box#send_event e;
           read_line#send_event e;
-          false ));
+          true ));
 
     self#add ~expand:false (new LTerm_widget.hline);
     self#add ~expand:false read_line;

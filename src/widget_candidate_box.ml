@@ -97,6 +97,7 @@ class t () =
         [ React.E.stamp (React.S.changes current_selection) ignore; React.E.stamp (React.S.changes candidates) ignore ]
       |> React.E.map (fun _ -> self#queue_draw);
     self#on_event self#handle_event;
+
     self#bind
       (let open LTerm_key in
       { control = true; meta = false; shift = false; code = Char (UChar.of_char 'n') })
