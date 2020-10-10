@@ -57,10 +57,14 @@ let selection_event_handler app_state box info text =
   let candidates = filter_candidate app_state info text in
   box#set_candidates candidates
 
-let confirm_candidate_handler wakener candidate =
-  match List.map ~f:Types.Candidate.text candidate with
-  | []     -> Lwt.wakeup_later wakener Confirmed_with_empty
-  | _ as v -> Lwt.wakeup_later wakener (Confirm v)
+let confirm_candidate_handler wakener info line_ids =
+  match line_ids with
+  | []            -> Lwt.wakeup_later wakener Confirmed_with_empty
+  | _ as line_ids ->
+      let hash_map : (Types.Line.id, Types.Candidate.t) Hashtbl.t = Hashtbl.create 10 in
+      Types.Info.to_candidates info |> List.iter ~f:(fun v -> Hashtbl.add hash_map Types.(v.Candidate.line.id) v);
+      let v = line_ids |> List.filter_map (fun v -> Hashtbl.find_opt hash_map v) |> List.map ~f:Types.Candidate.text in
+      Lwt.wakeup_later wakener (Confirm v)
 
 let change_filter_handler app_state filter = App_state.change_filter app_state filter
 
@@ -126,7 +130,9 @@ let () =
         let waiter, wakener = Lwt.task () in
         let () = React.S.changes term#quit |> React.E.map (quit_handler wakener) |> Lwt_react.E.keep in
         let () =
-          React.S.changes box#current_candidates |> React.E.map (confirm_candidate_handler wakener) |> Lwt_react.E.keep
+          React.S.changes box#current_candidates
+          |> React.E.map (confirm_candidate_handler wakener info)
+          |> Lwt_react.E.keep
         in
 
         let%lwt mode = LTerm.enter_raw_mode window in
