@@ -99,15 +99,11 @@ class t () =
           and current_marker = React.S.value item_marker in
 
           if Types.Item_marker.is_empty current_marker then
-            set_current_candidates (if selection >= Array.length candidates then [] else [ candidates.(selection) ])
+            set_current_candidates
+              (if selection >= Array.length candidates then [] else [ candidates.(selection).line.id ])
           else
-            let marked_candidates =
-              candidates
-              |> Array.map (fun l -> if Types.Item_marker.is_marked l current_marker then Some l else None)
-              |> Array.map (fun v -> Option.to_list v)
-              |> Array.to_seq |> List.of_seq |> List.flatten
-            in
-            set_current_candidates marked_candidates
+            let marked_lines = Types.Item_marker.marked_lines current_marker |> List.of_seq in
+            set_current_candidates marked_lines
       | Toggle_mark       ->
           let candidates = React.S.value candidates
           and selection = React.S.value current_selection
