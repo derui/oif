@@ -7,11 +7,12 @@ module CaseMap = DF.Camomile.CaseMap.Make (UTF8)
 
 let matched_style = { LTerm_style.none with LTerm_style.foreground = Some LTerm_style.cyan }
 
-let decorate_to_match queries candidate =
+let decorate_to_match queries line =
   match queries with
-  | [] -> Some (C.make candidate)
+  | [] -> Some (C.make line)
   | _  ->
       let queries = List.map (fun v -> ReIntf.regexp v |> Re.compile) queries in
+      let candidate = line.Types.Line.text in
       let matched =
         List.fold_left
           (fun accum regexp ->
@@ -27,4 +28,4 @@ let decorate_to_match queries candidate =
                       (first', first' + (String.length @@ Re.SubText.excerpt first)) :: accum ))
           [] queries
       in
-      if List.length queries <> List.length matched then None else Some (C.make ~matched candidate)
+      if List.length queries <> List.length matched then None else Some (C.make ~matched line)

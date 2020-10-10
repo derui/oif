@@ -9,13 +9,35 @@ type direction =
   | Next
   | Prev
 
-module Candidate : sig
+module Line : sig
+  type id = int
+
   type t = private {
+    id : id;
     text : UTF8.t;
+  }
+
+  val make : id -> UTF8.t -> t
+end = struct
+  type id = int
+
+  type t = {
+    id : id;
+    text : UTF8.t;
+  }
+
+  let make id text = { id; text }
+end
+
+module Candidate : sig
+  type id = int
+
+  type t = private {
+    line : Line.t;
     matched : matched list;
   }
 
-  val make : ?matched:matched list -> UTF8.t -> t
+  val make : ?matched:matched list -> Line.t -> t
 
   val text : t -> UTF8.t
 
@@ -23,14 +45,16 @@ module Candidate : sig
 
   val make_styled_text : bool -> t -> LTerm_text.t
 end = struct
+  type id = int
+
   type t = {
-    text : UTF8.t;
+    line : Line.t;
     matched : matched list;
   }
 
-  let make ?(matched = []) text = { text; matched }
+  let make ?(matched = []) line = { line; matched }
 
-  let text { text; _ } = text
+  let text { line = { Line.text; _ }; _ } = text
 
   let matched { matched; _ } = matched
 
@@ -56,7 +80,7 @@ end = struct
 
   let make_styled_text selected t =
     match t.matched with
-    | [] -> LTerm_text.eval [ LTerm_text.S t.text ]
+    | [] -> LTerm_text.eval [ LTerm_text.S (text t) ]
     | _  ->
         let merged_style_range = Oif_lib.Range.merge t.matched in
         let styled_texts =
@@ -78,7 +102,8 @@ end = struct
                   :: acc
                 in
                 (acc, after, e))
-              ~init:([], t.text, 0) merged_style_range
+              ~init:([], text t, 0)
+              merged_style_range
           in
           [ LTerm_text.S rest ] :: text |> List.rev |> List.flatten
         in
@@ -93,16 +118,58 @@ type candidates = Candidate.t list
 
 (* The candidates for filtering *)
 
+module Item_marker : sig
+  type t
+
+  val equal : t -> t -> bool
+
+  val empty : t
+
+  val is_empty : t -> bool
+
+  val toggle_mark : Candidate.t -> t -> t
+
+  val is_marked : Candidate.t -> t -> bool
+
+  val marked_lines : t -> int Seq.t
+end = struct
+  module Int_set = Set.Make (struct
+    type t = int
+
+    let compare = Stdlib.compare
+  end)
+
+  type t = { marked_lines : Int_set.t }
+
+  let equal v1 v2 = Int_set.equal v1.marked_lines v2.marked_lines
+
+  let empty = { marked_lines = Int_set.empty }
+
+  let is_empty { marked_lines } = Int_set.is_empty marked_lines
+
+  let toggle_mark candidate { marked_lines } =
+    let line_id = candidate.Candidate.line.id in
+    {
+      marked_lines =
+        ( if Int_set.mem line_id marked_lines then Int_set.remove line_id marked_lines
+        else Int_set.add line_id marked_lines );
+    }
+
+  let marked_lines { marked_lines } = Int_set.to_seq marked_lines
+
+  let is_marked candidate { marked_lines } = Int_set.mem candidate.Candidate.line.id marked_lines
+end
+
 (* Infomations to filtering candidates. *)
 module Info = struct
   type t = {
     mutable current_candidate : string option;
-    mutable lines : UTF8.t list;
+    mutable lines : Line.t list;
   }
 
   let empty = { current_candidate = None; lines = [] }
 
-  let to_candidates info = List.map info.lines ~f:Candidate.make
+  let to_candidates info = List.map info.lines ~f:(fun v -> Candidate.make v)
 
-  let init lines = { empty with lines }
+  let init lines = { empty with lines = List.mapi (fun i l -> Line.make i l) lines }
 end

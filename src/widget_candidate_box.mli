@@ -1,6 +1,7 @@
 type action =
   | Next_candidate
   | Prev_candidate
+  | Toggle_mark
   | Confirm_candidate
 
 (** Implementation for the box to show candidate and navigate. *)
@@ -9,8 +10,8 @@ class t :
   -> object
        inherit LTerm_widget.t
 
-       method current_candidate : Types.Candidate.t option React.signal
-       (** Signal for current selected candidate *)
+       method current_candidates : Types.Candidate.t list React.signal
+       (** Signal for current selected candidate or marked candidates *)
 
        method set_candidates : Types.candidates -> unit
        (** [set_candidates signal] set candidates to show in this box. *)

@@ -2,7 +2,6 @@
 This tool is small program as finder, such like fzf, peco.
 
 # TODO #
-- [X] Be able to search with multi words.
 - [ ] Read from input asynchronously
 
 # Install #
@@ -30,6 +29,15 @@ $ ls | oif
 # Using pipe after oif is allowed
 $ ls | oif | sed -e 's/ /-/g'
 ```
+
+# Key bindings #
+
+- `C-n/C-p`
+  - move cursor next/previous
+- `Enter`
+  - end program and print selected candidate or marked candidates to stdout
+- `Tab`
+  - mark current selected candidate
 
 # Options #
 
