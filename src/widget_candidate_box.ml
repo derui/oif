@@ -19,7 +19,7 @@ type action =
 class t () =
   let current_selection, set_selection = React.S.create 0 in
   let candidates, set_candidates = React.S.create [||] in
-  let current_candidates, set_current_candidates = React.S.create [] in
+  let current_candidates, set_current_candidates = React.S.create ~eq:(fun _ _ -> false) [] in
   let item_marker, set_item_marker = React.S.create ~eq:Types.Item_marker.equal Types.Item_marker.empty in
 
   object (self)
