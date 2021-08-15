@@ -1,9 +1,4 @@
-(alias
- (name    runtest)
- (deps    oif_lib_tests.exe)
- (action  (run %{deps})))
-
-(executable
+(test
  (name oif_lib_tests)
  (flags (-safe-string))
  (libraries oif_lib alcotest))
