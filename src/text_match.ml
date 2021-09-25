@@ -1,6 +1,6 @@
 open CamomileLibraryDefault.Camomile
 module DF = CamomileLibraryDefault
-module C = Types.Candidate
+module C = Oif_lib.Candidate
 module ReIntf = DF.Camomile.UReStr
 module Re = ReIntf.Make (UTF8)
 module CaseMap = DF.Camomile.CaseMap.Make (UTF8)
@@ -12,7 +12,7 @@ let decorate_to_match queries line =
   | [] -> Some (C.make line)
   | _  ->
       let queries = List.map (fun v -> ReIntf.regexp v |> Re.compile) queries in
-      let candidate = line.Types.Line.text in
+      let candidate = line.Oif_lib.Line.text in
       let matched =
         List.fold_left
           (fun accum regexp ->
@@ -25,7 +25,7 @@ let decorate_to_match queries line =
                   | None       -> accum
                   | Some first ->
                       let first' = Re.SubText.first first |> Re.SubText.ur_index_of first in
-                      (first', first' + (String.length @@ Re.SubText.excerpt first)) :: accum ))
+                      (first', first' + (String.length @@ Re.SubText.excerpt first)) :: accum))
           [] queries
       in
       if List.length queries <> List.length matched then None else Some (C.make ~matched line)

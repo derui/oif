@@ -1,3 +1,5 @@
+open Oif_lib
+
 type action =
   | Next_candidate
   | Prev_candidate
@@ -10,7 +12,7 @@ class t :
   -> object
        inherit LTerm_widget.t
 
-       method current_candidates : Types.Line.id list React.signal
+       method current_candidates : Line.id list React.signal
        (** Signal for current selected candidate or marked candidates *)
 
        method set_candidates : Types.candidates -> unit

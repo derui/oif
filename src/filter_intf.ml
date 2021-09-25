@@ -1,8 +1,10 @@
+open Oif_lib
+
 module type S = sig
   val unique_name : string
   (** [unique_name] get the name of the Filter. This name must be unique in all filters. *)
 
-  val filter : info:Types.Info.t -> text:string -> Types.Candidate.t list
+  val filter : info:Types.Info.t -> text:string -> Candidate.t list
   (** [filter ~info ~text] return candidate list filtered by [text]user input. *)
 end
 

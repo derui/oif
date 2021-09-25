@@ -1,3 +1,4 @@
+open Oif_lib
 open Std
 
 type exit_status =
@@ -61,9 +62,9 @@ let confirm_candidate_handler wakener info line_ids =
   match line_ids with
   | []            -> Lwt.wakeup_later wakener Confirmed_with_empty
   | _ as line_ids ->
-      let hash_map : (Types.Line.id, Types.Candidate.t) Hashtbl.t = Hashtbl.create 10 in
-      Types.Info.to_candidates info |> List.iter ~f:(fun v -> Hashtbl.add hash_map Types.(v.Candidate.line.id) v);
-      let v = line_ids |> List.filter_map (fun v -> Hashtbl.find_opt hash_map v) |> List.map ~f:Types.Candidate.text in
+      let hash_map : (Line.id, Candidate.t) Hashtbl.t = Hashtbl.create 10 in
+      Types.Info.to_candidates info |> List.iter ~f:(fun v -> Hashtbl.add hash_map v.Candidate.line.id v);
+      let v = line_ids |> List.filter_map (fun v -> Hashtbl.find_opt hash_map v) |> List.map ~f:Candidate.text in
       Lwt.wakeup_later wakener (Confirm v)
 
 let change_filter_handler app_state filter = App_state.change_filter app_state filter
@@ -76,9 +77,9 @@ let load_migemo_filter option =
          Migemocaml.Migemo.make_from_dir ~spec:(module Migemocaml.Regexp_spec.OCaml_str) ~base_dir:dict_dir ())
   |> Option.join
   |> Option.map (fun migemo : (module Filter.S) ->
-         ( module Filter.Migemo (struct
+         (module Filter.Migemo (struct
            let migemo = migemo
-         end) ))
+         end)))
   |> Option.to_list
 
 let create_window () =

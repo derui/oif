@@ -20,7 +20,7 @@ class t () =
   let current_selection, set_selection = React.S.create 0 in
   let candidates, set_candidates = React.S.create [||] in
   let current_candidates, set_current_candidates = React.S.create ~eq:(fun _ _ -> false) [] in
-  let item_marker, set_item_marker = React.S.create ~eq:Types.Item_marker.equal Types.Item_marker.empty in
+  let item_marker, set_item_marker = React.S.create ~eq:Item_marker.equal Item_marker.empty in
 
   object (self)
     inherit LTerm_widget.t "oif:candidate_box"
@@ -40,11 +40,11 @@ class t () =
     method bind key action = bindings <- Bindings.add [ key ] action bindings
 
     method private draw_candidate ctx l selected candidate ~marked =
-      let module C = Types.Candidate in
+      let module C = Candidate_style in
       let size = LTerm_draw.size ctx in
       let rect = { LTerm_geom.row1 = l; row2 = l + 1; col1 = prefix_length; col2 = LTerm_geom.cols size } in
       let ctx' = LTerm_draw.sub ctx rect in
-      let text = C.make_styled_text selected candidate in
+      let text = C.make_styled_candidate ~selected candidate in
       LTerm_draw.draw_styled ctx' 0 0 text;
 
       if marked then
@@ -74,7 +74,7 @@ class t () =
         let start_index = VW.Window.(start_index w) in
         Array.sub candidates start_index len
         |> Array.iteri (fun index candidate ->
-               let marked = Types.Item_marker.is_marked candidate item_marker in
+               let marked = Item_marker.is_marked candidate item_marker in
                self#draw_candidate ctx index (index = selection) candidate ~marked);
 
         if Array.length candidates > 0 then self#draw_selection ctx selection else ()
@@ -98,11 +98,11 @@ class t () =
           and selection = React.S.value current_selection
           and current_marker = React.S.value item_marker in
 
-          if Types.Item_marker.is_empty current_marker then
+          if Item_marker.is_empty current_marker then
             set_current_candidates
               (if selection >= Array.length candidates then [] else [ candidates.(selection).line.id ])
           else
-            let marked_lines = Types.Item_marker.marked_lines current_marker |> List.of_seq in
+            let marked_lines = Item_marker.marked_lines current_marker |> List.of_seq in
             set_current_candidates marked_lines
       | Toggle_mark       ->
           let candidates = React.S.value candidates
@@ -111,7 +111,7 @@ class t () =
           let start_index = VW.calculate_window _virtual_window |> VW.Window.start_index in
           let candidate_index = start_index + selection in
           if Array.length candidates > candidate_index then
-            set_item_marker (Types.Item_marker.toggle_mark candidates.(candidate_index) current_marker)
+            set_item_marker (Item_marker.toggle_mark candidates.(candidate_index) current_marker)
           else ()
 
     method private handle_event event =
