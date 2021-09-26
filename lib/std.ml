@@ -2,20 +2,26 @@
 
 let id v = v
 
+module Seq = struct
+  include Stdlib.Seq
+
+  let filter ~f seq = Stdlib.Seq.filter f seq
+
+  let range : ?stop:[ `inclusive | `exclusive ] -> int -> int -> int Seq.t =
+   fun ?(stop = `inclusive) from to_ ->
+    if from < 0 || to_ < 0 then Seq.empty
+    else if from > to_ then Seq.empty
+    else
+      let rec loop current to_ accum =
+        if current < to_ then accum else loop (pred current) to_ (Seq.cons current accum)
+      in
+      loop (if stop = `inclusive then to_ else pred to_) from Seq.empty
+end
+
 module List = struct
   include Stdlib.List
 
-  let range : ?stop:[ `inclusive | `exclusive ] -> int -> int -> int list =
-   fun ?(stop = `inclusive) from to_ ->
-    if from < 0 || to_ < 0 then []
-    else if from > to_ then []
-    else
-      let should_exit current to_ = match stop with `inclusive -> current > to_ | `exclusive -> current >= to_ in
-
-      let rec loop current to_ accum =
-        if should_exit current to_ then List.rev accum else loop (succ current) to_ (current :: accum)
-      in
-      loop from to_ []
+  let range ?(stop = `inclusive) from to_ = Seq.range ~stop from to_ |> List.of_seq
 
   let map ~f lst = Stdlib.List.map f lst
 
@@ -28,12 +34,6 @@ module List = struct
   let find_exn ~f lst = Stdlib.List.find f lst
 
   let iter ~f lst = Stdlib.List.iter f lst
-end
-
-module Seq = struct
-  include Stdlib.Seq
-
-  let filter ~f seq = Stdlib.Seq.filter f seq
 end
 
 module Option = struct
