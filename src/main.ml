@@ -6,7 +6,7 @@ type exit_status =
   | Confirmed_with_empty
   | Quit
 
-let name_of_filter = function Main_widget.Partial_match -> "Partial match" | Main_widget.Migemo -> "Migemo"
+let name_of_filter = function Widget_main.Partial_match -> "Partial match" | Widget_main.Migemo -> "Migemo"
 
 module App_state = struct
   type t = {
@@ -17,11 +17,11 @@ module App_state = struct
   let find_filter t name = List.find ~f:(fun (module F : Filter.S) -> F.unique_name = name) t.available_filters
 
   let change_filter t information_line = function
-    | Main_widget.Partial_match as v ->
+    | Widget_main.Partial_match as v ->
         let filter_name = name_of_filter v in
         information_line#set_filter_name filter_name;
         find_filter t filter_name |> Option.iter (fun filter -> t.current_filter <- filter)
-    | Main_widget.Migemo as v        ->
+    | Widget_main.Migemo as v        ->
         let filter_name = name_of_filter v in
         information_line#set_filter_name filter_name;
         find_filter t filter_name |> Option.iter (fun filter -> t.current_filter <- filter)
@@ -103,7 +103,7 @@ let () =
         let information_line = new Widget_information_line.t () in
         let read_line = new Widget_read_line.t ?query:option.query () in
         let term =
-          new Main_widget.t
+          new Widget_main.t
             ~box:(box :> LTerm_widget.t)
             ~read_line:(read_line :> LTerm_widget.t)
             ~information_line:(information_line :> LTerm_widget.t)
@@ -115,7 +115,7 @@ let () =
         in
         box#set_candidates candidates;
         information_line#set_number_of_candidates @@ List.length candidates;
-        information_line#set_filter_name @@ name_of_filter Main_widget.Partial_match;
+        information_line#set_filter_name @@ name_of_filter Widget_main.Partial_match;
 
         (* define event and handler *)
         let () =

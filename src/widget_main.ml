@@ -33,7 +33,7 @@ class t ~box ~read_line ~information_line () =
           let current_filter = React.S.value switch_filter in
           match current_filter with
           | Partial_match -> set_switcn_filter Migemo
-          | Migemo        -> set_switcn_filter Partial_match )
+          | Migemo        -> set_switcn_filter Partial_match)
       | Quit          -> set_quit true
 
     method private handle_event event =
@@ -44,7 +44,7 @@ class t ~box ~read_line ~information_line () =
           | Bindings.Accepted action ->
               self#exec action;
               true
-          | _                        -> false )
+          | _                        -> false)
       | _                   -> false
 
     initializer
@@ -53,7 +53,7 @@ class t ~box ~read_line ~information_line () =
         else (
           box#send_event e;
           read_line#send_event e;
-          true ));
+          true));
 
     self#add ~expand:false (new LTerm_widget.hline);
     self#add ~expand:false read_line;
