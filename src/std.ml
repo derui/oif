@@ -35,3 +35,13 @@ module Seq = struct
 
   let filter ~f seq = Stdlib.Seq.filter f seq
 end
+
+module Option = struct
+  include Stdlib.Option
+
+  let ( >>= ) v f = Option.bind v f
+
+  module Let_syntax = struct
+    let ( let* ) v f = Option.bind v f
+  end
+end
