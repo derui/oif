@@ -19,7 +19,7 @@ let split_query query =
             let first = Re.SubText.first v |> Re.SubText.ur_index_of v
             and len = Re.SubText.excerpt v |> String.length in
             let query_len = String.length query in
-            split (String.sub query (first + len) (query_len - (first + len))) (Re.SubText.excerpt v :: accum) )
+            split (String.sub query (first + len) (query_len - (first + len))) (Re.SubText.excerpt v :: accum))
   in
   split query []
 
@@ -34,8 +34,7 @@ module Partial_match = struct
       |> List.map ~f:(fun v -> Printf.sprintf "^.*\\(%s\\)" v)
     in
     let candidates =
-      List.map info.I.lines ~f:(Text_match.decorate_to_match queries)
-      |> List.filter ~f:Option.is_some |> List.map ~f:Option.get
+      List.map info.I.lines ~f:(Matcher.query queries) |> List.filter ~f:Option.is_some |> List.map ~f:Option.get
     in
     candidates
 end
@@ -52,8 +51,7 @@ module Migemo (A : Migemo_arg) = struct
 
     let module I = Types.Info in
     let candidates =
-      List.map info.I.lines ~f:(Text_match.decorate_to_match queries)
-      |> List.filter ~f:Option.is_some |> List.map ~f:Option.get
+      List.map info.I.lines ~f:(Matcher.query queries) |> List.filter ~f:Option.is_some |> List.map ~f:Option.get
     in
     candidates
 end
