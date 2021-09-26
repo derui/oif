@@ -1,3 +1,4 @@
+open Oif_lib
 open Std
 include Filter_intf
 open CamomileLibraryDefault.Camomile

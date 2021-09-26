@@ -7,4 +7,4 @@ type t = {
   text : UTF8.t;
 }
 
-let make id text = { id; text }
+let make ~id ~text = { id; text }

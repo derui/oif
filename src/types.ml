@@ -1,5 +1,5 @@
-open Std
 open Oif_lib
+open Std
 
 type matched = int * int
 
@@ -22,5 +22,5 @@ module Info = struct
 
   let to_candidates info = List.map info.lines ~f:(fun v -> Candidate.make v)
 
-  let init lines = { empty with lines = List.mapi (fun i l -> Line.make i l) lines }
+  let init lines = { empty with lines = List.mapi (fun i l -> Line.make ~id:i ~text:l) lines }
 end

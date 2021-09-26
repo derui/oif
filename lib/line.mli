@@ -7,4 +7,4 @@ type t = private {
   text : UTF8.t;
 }
 
-val make : id -> UTF8.t -> t
+val make : id:id -> text:UTF8.t -> t

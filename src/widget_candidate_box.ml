@@ -1,6 +1,7 @@
 open CamomileLibraryDefault.Camomile
+open Oif_lib
 open Std
-module VW = Oif_lib.Virtual_window
+module VW = Virtual_window
 module Bindings = Zed_input.Make (LTerm_key)
 
 let selection_prefix = "->"

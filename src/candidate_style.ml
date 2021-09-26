@@ -1,4 +1,4 @@
-open Std
+open Oif_lib.Std
 
 let begin_of_style style =
   let bold = style.LTerm_style.bold |> Option.fold ~none:[] ~some:(fun v -> [ LTerm_text.B_bold v ])
