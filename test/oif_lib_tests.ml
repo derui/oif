@@ -6,4 +6,5 @@ let () =
       ("Line", Line_test.tests);
       ("Candidate", Candidate_test.tests);
       ("Std", Std_test.tests);
+      ("Filter", Filter_test.tests);
     ]
