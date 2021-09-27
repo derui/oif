@@ -49,7 +49,7 @@ let make_info lines = Lwt.return @@ Types.Info.init lines
 
 let filter_candidate app_state info text =
   let module F = (val app_state.App_state.current_filter) in
-  F.filter ~info ~text
+  F.filter ~source:(fun () -> List.to_seq info) ~text |> List.of_seq
 
 (* event handlers *)
 
@@ -77,7 +77,7 @@ let load_migemo_filter option =
          Migemocaml.Migemo.make_from_dir ~spec:(module Migemocaml.Regexp_spec.OCaml_str) ~base_dir:dict_dir ())
   |> Option.join
   |> Option.map (fun migemo : (module Filter.S) ->
-         (module Filter.Migemo (struct
+         (module Migemo_filter.Make (struct
            let migemo = migemo
          end)))
   |> Option.to_list
@@ -92,8 +92,8 @@ let () =
   Cli_option.parse (fun option ->
       let app_state =
         {
-          App_state.current_filter = (module Filter.Partial_match);
-          available_filters = [ (module Filter.Partial_match : Filter.S) ] @ load_migemo_filter option;
+          App_state.current_filter = (module Partial_match_filter);
+          available_filters = [ (module Partial_match_filter : Filter.S) ] @ load_migemo_filter option;
         }
       in
       let monad =
@@ -111,7 +111,7 @@ let () =
         in
         let candidates =
           Types.Info.to_candidates info |> fun candidates ->
-          match option.query with None -> candidates | Some v -> filter_candidate app_state info v
+          match option.query with None -> candidates | Some v -> filter_candidate app_state info.lines v
         in
         box#set_candidates candidates;
         information_line#set_number_of_candidates @@ List.length candidates;
@@ -120,7 +120,7 @@ let () =
         (* define event and handler *)
         let () =
           React.S.changes read_line#text
-          |> React.E.map (fun text -> selection_event_handler app_state box info text)
+          |> React.E.map (fun text -> selection_event_handler app_state box info.lines text)
           |> Lwt_react.E.keep
         in
         let () =
