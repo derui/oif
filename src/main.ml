@@ -64,7 +64,7 @@ let confirm_candidate_handler wakener info line_ids =
   | _ as line_ids ->
       let hash_map : (Line.id, Candidate.t) Hashtbl.t = Hashtbl.create 10 in
       Types.Info.to_candidates info |> List.iter ~f:(fun v -> Hashtbl.add hash_map v.Candidate.line.id v);
-      let v = line_ids |> List.filter_map (fun v -> Hashtbl.find_opt hash_map v) |> List.map ~f:Candidate.text in
+      let v = line_ids |> List.filter_map ~f:(fun v -> Hashtbl.find_opt hash_map v) |> List.map ~f:Candidate.text in
       Lwt.wakeup_later wakener (Confirm v)
 
 let change_filter_handler app_state filter = App_state.change_filter app_state filter

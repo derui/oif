@@ -27,6 +27,8 @@ module List = struct
 
   let filter ~f lst = Stdlib.List.filter f lst
 
+  let filter_map ~f lst = Stdlib.List.filter_map f lst
+
   let fold_left ~f ~init lst = Stdlib.List.fold_left f init lst
 
   let find ~f lst = Stdlib.List.find_opt f lst
