@@ -24,7 +24,7 @@ depends: [
   "cmdliner" {< "2.0.0"}
   "alcotest" {with-test & < "2.0.0"}
 ]
-available: ["ocaml" >= "4.05.0"]
+available: ["ocaml" >= "4.09.0"]
 description: """
 Deadly simple finder that is able to use to find file from list, find branch from list, and more.
 
