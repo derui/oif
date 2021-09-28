@@ -1,11 +1,6 @@
 open Oif_lib
 open Std
 include Filter_intf
-open CamomileLibraryDefault.Camomile
-module DF = CamomileLibraryDefault
-module ReIntf = DF.Camomile.UReStr
-module Re = ReIntf.Make (UTF8)
-module CaseMap = DF.Camomile.CaseMap.Make (UTF8)
 
 module Partial_match = struct
   let unique_name = "Partial match"
