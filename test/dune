@@ -1,4 +1,4 @@
 (test
- (name oif_lib_tests)
+ (name oif_tests)
  (flags (-safe-string))
- (libraries oif_lib alcotest))
+ (libraries oif alcotest))

@@ -1,5 +1,6 @@
 open Oif_lib
 open Std
+open Oif
 
 type exit_status =
   | Confirm              of string list

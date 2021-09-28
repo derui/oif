@@ -1,6 +1,5 @@
-(executable
- (name main)
- (public_name oif)
+(library
+ (name oif)
  (flags (:standard -safe-string))
  (preprocess (pps lwt_ppx))
  (libraries oif_lib lambda-term unix camomile migemocaml cmdliner re))
