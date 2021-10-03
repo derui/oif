@@ -47,3 +47,13 @@ module Option = struct
     let ( let* ) v f = Option.bind v f
   end
 end
+
+module Result = struct
+  include Stdlib.Result
+
+  let ( >>= ) v f = Result.bind v f
+
+  module Let_syntax = struct
+    let ( let* ) v f = Result.bind v f
+  end
+end

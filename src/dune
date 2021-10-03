@@ -1,5 +1,5 @@
 (library
  (name oif)
  (flags (:standard -safe-string))
- (preprocess (pps lwt_ppx))
- (libraries oif_lib lambda-term unix camomile migemocaml cmdliner re))
+ (libraries oif_lib lambda-term unix camomile migemocaml cmdliner re ppx_protocol_conv_json)
+ (preprocess (pps lwt_ppx ppx_protocol_conv)))
