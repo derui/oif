@@ -11,7 +11,7 @@ type action =
 module Bindings = Zed_input.Make (LTerm_key)
 
 (** Implementation for main widget. *)
-class t ~box ~read_line ~information_line () =
+class t ~box ~read_line ~information_line ~event_hub () =
   let switch_filter, set_switcn_filter = React.S.create Partial_match in
   let quit, set_quit = React.S.create false in
   object (self)
@@ -48,12 +48,16 @@ class t ~box ~read_line ~information_line () =
       | _                   -> false
 
     initializer
+    let observer e =
+      if self#handle_event e then ()
+      else (
+        box#send_event e;
+        read_line#send_event e)
+    in
+    Event_hub.add_observer observer event_hub |> ignore;
     self#on_event (fun e ->
-        if self#handle_event e then true
-        else (
-          box#send_event e;
-          read_line#send_event e;
-          true));
+        Event_hub.dispatch e event_hub;
+        true);
 
     self#add ~expand:false (new LTerm_widget.hline);
     self#add ~expand:false read_line;

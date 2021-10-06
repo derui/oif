@@ -103,12 +103,13 @@ let () =
         let box = new Widget_candidate_box.t () in
         let information_line = new Widget_information_line.t () in
         let read_line = new Widget_read_line.t ?query:option.query () in
+        let hub = Event_hub.make () in
         let term =
           new Widget_main.t
             ~box:(box :> LTerm_widget.t)
             ~read_line:(read_line :> LTerm_widget.t)
             ~information_line:(information_line :> LTerm_widget.t)
-            ()
+            ~event_hub:hub ()
         in
         let candidates =
           Types.Info.to_candidates info |> fun candidates ->
