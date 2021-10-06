@@ -82,6 +82,26 @@ let create_window () =
   let out_chan = Lwt_io.of_fd ~mode:Lwt_io.output tty_fd in
   LTerm.create tty_fd in_chan tty_fd out_chan
 
+let get_event_recorder path recorder =
+  let events = ref [] in
+  let observer event =
+    let timestamp = Timestamp_recorder.make_stamp recorder in
+    Events.of_lterm_event ~event ~timestamp |> Option.iter (fun event -> events := event :: !events)
+  in
+
+  let finalizer () =
+    let events = List.map ~f:Oif.Events.to_json !events |> List.rev in
+    let events = `List events in
+    Yojson.Safe.to_file path events
+  in
+  (observer, finalizer)
+
+type finalizer = unit -> unit
+
+let finalizers = ref []
+
+let add_finalizer finalizer = finalizers := finalizer :: !finalizers
+
 let () =
   Cli_option.parse (fun option ->
       let app_state =
@@ -111,6 +131,19 @@ let () =
         box#set_candidates candidates;
         information_line#set_number_of_candidates @@ List.length candidates;
         information_line#set_filter_name @@ name_of_filter Widget_main.Partial_match;
+        let timestamp_recorder =
+          Timestamp_recorder.start
+            (module struct
+              let now () = Unix.time () |> Int64.of_float
+            end)
+        in
+
+        Option.iter
+          (fun path ->
+            let observer, finalizer = get_event_recorder path timestamp_recorder in
+            add_finalizer finalizer;
+            Event_hub.add_observer observer hub |> ignore)
+          option.Cli_option.record_event_path;
 
         (* define event and handler *)
         let () =
@@ -138,6 +171,7 @@ let () =
           Lwt.return Quit
       in
       let result = Lwt_main.run monad in
+      List.iter ~f:(fun v -> v ()) !finalizers;
       match result with
       | Quit                 -> exit 130
       | Confirmed_with_empty -> exit 1
