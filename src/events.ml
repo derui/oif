@@ -108,3 +108,6 @@ let of_json json =
   in
 
   Result.to_option converted
+
+let of_lterm_event ~event ~timestamp =
+  match event with LTerm_event.Key key -> make_key_event ~key ~timestamp |> Option.some | _ -> None

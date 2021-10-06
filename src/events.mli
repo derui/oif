@@ -17,3 +17,6 @@ val to_json : t -> Yojson.Safe.t
 
 val of_json : Yojson.Safe.t -> t option
 (** [of_json json] convert event from JSON *)
+
+val of_lterm_event : event:LTerm_event.t -> timestamp:Timestamp.t -> t option
+(** [of_lterm_event ~event ~timestamp] convert to [t] from [event]. *)
