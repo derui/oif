@@ -2,11 +2,13 @@ type t = {
   prompt : string option;
   migemo_dict_directory : string option;
   query : string option;
+  record_event_path : string option;
 }
 
-let empty = { prompt = None; migemo_dict_directory = None; query = None }
+let empty = { prompt = None; migemo_dict_directory = None; query = None; record_event_path = None }
 
-let construct_option f query migemo_dict_directory prompt = f { query; migemo_dict_directory; prompt } |> ignore
+let construct_option f query migemo_dict_directory prompt record_event_path =
+  f { query; migemo_dict_directory; prompt; record_event_path } |> ignore
 
 let default_env vname = "OIF_DEFAULT_" ^ String.uppercase_ascii vname
 
@@ -22,8 +24,11 @@ let parse_options f =
   let prompt =
     Arg.(value & opt (some string) None & info [ "prompt" ] ~env ~doc:"Prompt of input (Default is 'QUERY> ')")
   in
+  let record_event_path =
+    Arg.(value & opt (some string) None & info [ "record_event_path" ] ~env ~doc:"Path to record event of oif")
+  in
 
-  let term = Term.(const construct_option $ const f $ query $ migemo_dict_directory $ prompt) in
+  let term = Term.(const construct_option $ const f $ query $ migemo_dict_directory $ prompt $ record_event_path) in
   let info' = Term.info ~doc:"finder of OCaml" ~exits:Term.default_exits "oif" in
 
   Term.(eval (term, info'))
