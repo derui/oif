@@ -7,28 +7,21 @@ type exit_status =
   | Confirmed_with_empty
   | Quit
 
+let open_tty fname = Lwt_unix.openfile fname [ Lwt_unix.O_RDWR ] 0o666
+
+let find_filter t name = List.find ~f:(fun (module F : Filter.S) -> F.unique_name = name) t.App_state.available_filters
+
 let name_of_filter = function Widget_main.Partial_match -> "Partial match" | Widget_main.Migemo -> "Migemo"
 
-module App_state = struct
-  type t = {
-    mutable current_filter : (module Filter.S);
-    available_filters : (module Filter.S) list;
-  }
-
-  let find_filter t name = List.find ~f:(fun (module F : Filter.S) -> F.unique_name = name) t.available_filters
-
-  let change_filter t information_line = function
-    | Widget_main.Partial_match as v ->
-        let filter_name = name_of_filter v in
-        information_line#set_filter_name filter_name;
-        find_filter t filter_name |> Option.iter (fun filter -> t.current_filter <- filter)
-    | Widget_main.Migemo as v        ->
-        let filter_name = name_of_filter v in
-        information_line#set_filter_name filter_name;
-        find_filter t filter_name |> Option.iter (fun filter -> t.current_filter <- filter)
-end
-
-let open_tty fname = Lwt_unix.openfile fname [ Lwt_unix.O_RDWR ] 0o666
+let change_filter t information_line = function
+  | Widget_main.Partial_match as v ->
+      let filter_name = name_of_filter v in
+      information_line#set_filter_name filter_name;
+      find_filter t filter_name |> Option.iter (fun filter -> t.App_state.current_filter <- filter)
+  | Widget_main.Migemo as v        ->
+      let filter_name = name_of_filter v in
+      information_line#set_filter_name filter_name;
+      find_filter t filter_name |> Option.iter (fun filter -> t.App_state.current_filter <- filter)
 
 let load_lines channel =
   let open Lwt in
@@ -68,7 +61,7 @@ let confirm_candidate_handler wakener info line_ids =
       let v = line_ids |> List.filter_map ~f:(fun v -> Hashtbl.find_opt hash_map v) |> List.map ~f:Candidate.text in
       Lwt.wakeup_later wakener (Confirm v)
 
-let change_filter_handler app_state filter = App_state.change_filter app_state filter
+let change_filter_handler app_state filter = change_filter app_state filter
 
 let quit_handler wakener = function false -> () | true -> Lwt.wakeup_later wakener Quit
 
