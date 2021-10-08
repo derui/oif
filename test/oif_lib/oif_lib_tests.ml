@@ -8,5 +8,4 @@ let () =
       ("Std", Std_test.tests);
       ("Filter", Filter_test.tests);
       ("Timestamp", Timestamp_test.tests);
-      ("Timestamp recorder", Timestamp_recorder_test.tests);
     ]

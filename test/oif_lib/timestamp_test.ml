@@ -22,4 +22,37 @@ let tests =
         let after = Timestamp.of_int64 64L in
         let actual = Timestamp.difference ~before ~after |> Timestamp.to_int64 in
         Alcotest.(check int64) "same timestamp" (-1L) actual );
+    ( "get timestamp from start",
+      `Quick,
+      fun () ->
+        let module Time = struct
+          let count = ref 1L
+
+          let now () =
+            let v = !count in
+            count := Int64.add !count 2L;
+            v
+        end in
+        let module TR = Timestamp.Make (Time) in
+        let recorder = TR.start () in
+        let time = TR.timestamp recorder |> Timestamp.to_int64 in
+        Alcotest.(check int64) "recorded" 2L time );
+    ( "get monotonous increased timestamp from start",
+      `Quick,
+      fun () ->
+        let module Time = struct
+          let count = ref 1L
+
+          let now () =
+            let v = !count in
+            count := Int64.add !count 2L;
+            v
+        end in
+        let module TR = Timestamp.Make (Time) in
+        let recorder = TR.start () in
+        TR.timestamp recorder |> ignore;
+        TR.timestamp recorder |> ignore;
+        let time = TR.timestamp recorder |> Timestamp.to_int64 in
+
+        Alcotest.(check int64) "recorded" 6L time );
   ]

@@ -12,3 +12,19 @@ val of_int64 : int64 -> t
 val difference : before:t -> after:t -> t
 (** [difference ~before ~after] get difference of timestamp between [before] and [after]. Result of this function offers
     minus timestamp if after is before from [before]. *)
+
+(** modules to get timestamp *)
+
+module type Time = sig
+  val now : unit -> int64
+end
+
+module type Timestamper = sig
+  type timestamper
+
+  val start : unit -> timestamper
+
+  val timestamp : timestamper -> t
+end
+
+module Make (T : Time) : Timestamper
