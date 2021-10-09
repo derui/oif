@@ -78,7 +78,9 @@ let of_json_code = function
   | "Backspace" -> Backspace
   | _ as v      -> Char (UChar.of_int @@ int_of_string v)
 
-let make_key_event ~key ~timestamp = { kind = Key key; timestamp }
+let make ~kind ~timestamp = { kind; timestamp }
+
+let kind_of_key key = Key key
 
 let to_json { kind; timestamp } =
   match kind with
@@ -109,5 +111,6 @@ let of_json json =
 
   Result.to_option converted
 
-let of_lterm_event ~event ~timestamp =
-  match event with LTerm_event.Key key -> make_key_event ~key ~timestamp |> Option.some | _ -> None
+let kind_of_lterm_event event = match event with LTerm_event.Key key -> kind_of_key key |> Option.some | _ -> None
+
+let to_lterm_event = function { kind = Key key; _ } -> LTerm_event.Key key

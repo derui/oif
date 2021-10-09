@@ -9,14 +9,16 @@ let tests =
       `Quick,
       fun () ->
         let key = get_key LTerm_key.End in
-        let event = O.Events.make_key_event ~key ~timestamp:(Timestamp.of_int64 1L) in
+        let kind = O.Events.kind_of_key key in
+        let event = O.Events.make ~kind ~timestamp:(Timestamp.of_int64 1L) in
         let actual = O.Events.(to_json event |> of_json |> Option.get) in
         Alcotest.(check @@ of_pp Fmt.nop) "same" actual event );
     ( "should be able to convert key event with modifiers",
       `Quick,
       fun () ->
         let key = get_key ~control:true ~shift:true LTerm_key.(Char (UChar.of_char 'b')) in
-        let event = O.Events.make_key_event ~key ~timestamp:(Timestamp.of_int64 1L) in
+        let kind = O.Events.kind_of_key key in
+        let event = O.Events.make ~kind ~timestamp:(Timestamp.of_int64 1L) in
         let actual = O.Events.(to_json event |> of_json |> Option.get) in
         Alcotest.(check @@ of_pp Fmt.nop) "same" actual event );
   ]

@@ -34,8 +34,9 @@ let tests =
             v
         end in
         let module TR = Timestamp.Make (Time) in
-        let recorder = TR.start () in
-        let time = TR.timestamp recorder |> Timestamp.to_int64 in
+        let module I = (val TR.make ()) in
+        I.(start instance);
+        let time = I.(timestamp instance) |> Timestamp.to_int64 in
         Alcotest.(check int64) "recorded" 2L time );
     ( "get monotonous increased timestamp from start",
       `Quick,
@@ -49,10 +50,12 @@ let tests =
             v
         end in
         let module TR = Timestamp.Make (Time) in
-        let recorder = TR.start () in
-        TR.timestamp recorder |> ignore;
-        TR.timestamp recorder |> ignore;
-        let time = TR.timestamp recorder |> Timestamp.to_int64 in
+        let module TR = Timestamp.Make (Time) in
+        let module I = (val TR.make ()) in
+        I.(start instance);
+        I.(timestamp instance) |> ignore;
+        I.(timestamp instance) |> ignore;
+        let time = I.(timestamp instance) |> Timestamp.to_int64 in
 
         Alcotest.(check int64) "recorded" 6L time );
   ]

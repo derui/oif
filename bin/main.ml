@@ -82,20 +82,6 @@ let create_window () =
   let out_chan = Lwt_io.of_fd ~mode:Lwt_io.output tty_fd in
   LTerm.create tty_fd in_chan tty_fd out_chan
 
-let get_event_recorder path recorder =
-  let events = ref [] in
-  let observer event =
-    let timestamp = Timestamp_recorder.make_stamp recorder in
-    Events.of_lterm_event ~event ~timestamp |> Option.iter (fun event -> events := event :: !events)
-  in
-
-  let finalizer () =
-    let events = List.map ~f:Oif.Events.to_json !events |> List.rev in
-    let events = `List events in
-    Yojson.Safe.to_file path events
-  in
-  (observer, finalizer)
-
 type finalizer = unit -> unit
 
 let finalizers = ref []
@@ -116,7 +102,11 @@ let () =
         let box = new Widget_candidate_box.t () in
         let information_line = new Widget_information_line.t () in
         let read_line = new Widget_read_line.t ?query:option.query () in
-        let hub = Event_hub.make () in
+        let module TR = Timestamp.Make (struct
+          let now () = Unix.time () |> Int64.of_float
+        end) in
+        let module I = (val TR.make ()) in
+        let hub = Event_hub.make (module I) in
         let term =
           new Widget_main.t
             ~box:(box :> LTerm_widget.t)
@@ -131,16 +121,10 @@ let () =
         box#set_candidates candidates;
         information_line#set_number_of_candidates @@ List.length candidates;
         information_line#set_filter_name @@ name_of_filter Widget_main.Partial_match;
-        let timestamp_recorder =
-          Timestamp_recorder.start
-            (module struct
-              let now () = Unix.time () |> Int64.of_float
-            end)
-        in
 
         Option.iter
           (fun path ->
-            let observer, finalizer = get_event_recorder path timestamp_recorder in
+            let observer, finalizer = Event_recorder.init path in
             add_finalizer finalizer;
             Event_hub.add_observer observer hub |> ignore)
           option.Cli_option.record_event_path;

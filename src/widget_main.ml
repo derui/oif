@@ -49,6 +49,7 @@ class t ~box ~read_line ~information_line ~event_hub () =
 
     initializer
     let observer e =
+      let e = Events.to_lterm_event e in
       if self#handle_event e then ()
       else (
         box#send_event e;
@@ -56,7 +57,8 @@ class t ~box ~read_line ~information_line ~event_hub () =
     in
     Event_hub.add_observer observer event_hub |> ignore;
     self#on_event (fun e ->
-        Event_hub.dispatch e event_hub;
+        let event = Events.kind_of_lterm_event e in
+        Option.iter (fun e -> Event_hub.dispatch e event_hub) event;
         true);
 
     self#add ~expand:false (new LTerm_widget.hline);

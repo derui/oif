@@ -1,15 +1,23 @@
-type 'event observer = 'event -> unit
+open Oif_lib
 
-type 'event t = { observers : 'event observer list ref }
+type observer = Events.t -> unit
+
+type t = {
+  observers : observer list ref;
+  timestamper : (module Timestamp.Instance);
+}
 
 type deleter = unit -> unit
 
 (** [make ()] get new instance of event hub for [event] type *)
-let make () = { observers = ref [] }
+let make (module T : Timestamp.Instance) = { observers = ref []; timestamper = (module T) }
 
-let dispatch event { observers } = List.iter (fun v -> v event) !observers
+let dispatch event { observers; timestamper = (module T) } =
+  let timestamp = T.(timestamp instance) in
+  let event = Events.make ~kind:event ~timestamp in
+  List.iter (fun v -> v event) !observers
 
-let add_observer observer { observers } =
+let add_observer observer { observers; _ } =
   let deleter () =
     let list = !observers in
     observers := List.filter (fun v -> v != observer) list

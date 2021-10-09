@@ -19,12 +19,18 @@ module type Time = sig
   val now : unit -> int64
 end
 
-module type Timestamper = sig
+module type Instance = sig
   type timestamper
 
-  val start : unit -> timestamper
+  val instance : timestamper
+
+  val start : timestamper -> unit
 
   val timestamp : timestamper -> t
+end
+
+module type Timestamper = sig
+  val make : unit -> (module Instance)
 end
 
 module Make (T : Time) : Timestamper

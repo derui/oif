@@ -3,6 +3,7 @@ type t = {
   migemo_dict_directory : string option;
   query : string option;
   record_event_path : string option;
+  replay_event_path : string option;
 }
 
 val empty : t
