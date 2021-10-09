@@ -129,6 +129,12 @@ let () =
             Event_hub.add_observer observer hub |> ignore)
           option.Cli_option.record_event_path;
 
+        Option.iter
+          (fun path ->
+            let replay = Event_replayer.init path hub in
+            Lwt.async (fun () -> replay))
+          option.Cli_option.replay_event_path;
+
         (* define event and handler *)
         let () =
           React.S.changes read_line#text
