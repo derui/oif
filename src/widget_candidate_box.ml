@@ -17,13 +17,13 @@ type action =
   | Confirm_candidate
 
 (** Implementation for the box to show candidate and navigate. *)
-class t ?maximum_height () =
+class t () =
   let current_selection, set_selection = React.S.create 0 in
   let candidates, set_candidates = React.S.create [||] in
   let current_candidates, set_current_candidates = React.S.create ~eq:(fun _ _ -> false) [] in
   let item_marker, set_item_marker = React.S.create ~eq:Item_marker.equal Item_marker.empty in
 
-  let view_port_size ctx =
+  let view_port_size ctx maximum_height =
     let size = LTerm_draw.size ctx in
     match maximum_height with Some height -> min size.rows height | None -> size.rows
   in
@@ -44,6 +44,10 @@ class t ?maximum_height () =
     val mutable bindings : action Bindings.t = Bindings.empty
 
     method bind key action = bindings <- Bindings.add [ key ] action bindings
+
+    val mutable maximum_height : int option = None
+
+    method set_maximum_height height = maximum_height <- Some height
 
     method private draw_candidate ctx l selected candidate ~marked =
       let module C = Candidate_style in
@@ -68,7 +72,7 @@ class t ?maximum_height () =
       |> LTerm_draw.draw_string ctx 0 0 ~style:{ LTerm_style.none with foreground = Some LTerm_style.lred }
 
     method private render ctx candidates selection item_marker =
-      let view_port_height = view_port_size ctx in
+      let view_port_height = view_port_size ctx maximum_height in
       _virtual_window <-
         VW.update_total_rows (Array.length candidates) _virtual_window
         |> VW.update_view_port_size view_port_height

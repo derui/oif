@@ -8,10 +8,12 @@ type action =
   | Change_filter
   | Quit
 
+type options = { maximum_height : int option }
+
 module Bindings = Zed_input.Make (LTerm_key)
 
 (** Implementation for main widget. *)
-class t ~box ~read_line ~information_line ~event_hub () =
+class t ~box ~read_line ~information_line ~event_hub ~options:_ () =
   let switch_filter, set_switcn_filter = React.S.create Partial_match in
   let quit, set_quit = React.S.create false in
   object (self)
@@ -64,8 +66,9 @@ class t ~box ~read_line ~information_line ~event_hub () =
     self#add ~expand:false (new LTerm_widget.hline);
     self#add ~expand:false read_line;
     self#add ~expand:false information_line;
-    self#add ~expand:true box;
+    self#add ~expand:false box;
 
+    (* allocation initial size *)
     self#bind
       (let open LTerm_key in
       { control = true; meta = false; shift = false; code = Char (UChar.of_char 'q') })

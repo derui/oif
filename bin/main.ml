@@ -88,14 +88,10 @@ let finalizers = ref []
 
 let add_finalizer finalizer = finalizers := finalizer :: !finalizers
 
-let minimum_candidate_height = 2
-
-let get_maximum_candidate_height option size =
+let get_maximum_height option size =
   let rows = size.LTerm_geom.rows in
   option.Cli_option.height
-  |> Option.map (fun height_percent ->
-         let height = float_of_int rows *. (float_of_int height_percent /. 100.) |> int_of_float in
-         max minimum_candidate_height height)
+  |> Option.map (fun height_percent -> float_of_int rows *. (float_of_int height_percent /. 100.) |> int_of_float)
 
 let () =
   Cli_option.parse (fun option ->
@@ -110,7 +106,7 @@ let () =
         let%lwt window = create_window () in
         let%lwt initial_size = LTerm.get_size window in
 
-        let box = new Widget_candidate_box.t ?maximum_height:(get_maximum_candidate_height option initial_size) () in
+        let box = new Widget_candidate_box.t () in
         let information_line = new Widget_information_line.t () in
         let read_line = new Widget_read_line.t ?query:option.query () in
         let module TR = Timestamp.Make (struct
@@ -123,7 +119,9 @@ let () =
             ~box:(box :> LTerm_widget.t)
             ~read_line:(read_line :> LTerm_widget.t)
             ~information_line:(information_line :> LTerm_widget.t)
-            ~event_hub:hub ()
+            ~event_hub:hub
+            ~options:{ maximum_height = get_maximum_height option initial_size }
+            ()
         in
         let candidates =
           Types.Info.to_candidates info |> fun candidates ->
