@@ -8,7 +8,8 @@ type action =
 
 (** Implementation for the box to show candidate and navigate. *)
 class t :
-  unit
+  ?maximum_height:int
+  -> unit
   -> object
        inherit LTerm_widget.t
 

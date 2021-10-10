@@ -17,11 +17,16 @@ type action =
   | Confirm_candidate
 
 (** Implementation for the box to show candidate and navigate. *)
-class t () =
+class t ?maximum_height () =
   let current_selection, set_selection = React.S.create 0 in
   let candidates, set_candidates = React.S.create [||] in
   let current_candidates, set_current_candidates = React.S.create ~eq:(fun _ _ -> false) [] in
   let item_marker, set_item_marker = React.S.create ~eq:Item_marker.equal Item_marker.empty in
+
+  let view_port_size ctx =
+    let size = LTerm_draw.size ctx in
+    match maximum_height with Some height -> min size.rows height | None -> size.rows
+  in
 
   object (self)
     inherit LTerm_widget.t "oif:candidate_box"
@@ -63,10 +68,11 @@ class t () =
       |> LTerm_draw.draw_string ctx 0 0 ~style:{ LTerm_style.none with foreground = Some LTerm_style.lred }
 
     method private render ctx candidates selection item_marker =
-      let size = LTerm_draw.size ctx in
+      let view_port_height = view_port_size ctx in
       _virtual_window <-
         VW.update_total_rows (Array.length candidates) _virtual_window
-        |> VW.update_view_port_size size.rows |> VW.update_focused_row selection;
+        |> VW.update_view_port_size view_port_height
+        |> VW.update_focused_row selection;
 
       let w = VW.calculate_window _virtual_window in
       let len = succ @@ VW.Window.(end_index w - start_index w) in
