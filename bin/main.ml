@@ -76,11 +76,36 @@ let load_migemo_filter option =
          end)))
   |> Option.to_list
 
+let get_tty_name () =
+  let dev_prefixes = [ "/dev/pts/"; "/dev/" ] in
+  let open Option.Let_syntax in
+  let* stderr_stat = try Unix.fstat Unix.stderr |> Option.some with _ -> None in
+
+  let rec loop = function
+    | []             -> None
+    | prefix :: rest -> (
+        let files = Sys.readdir prefix in
+        let ret =
+          Array.to_list files
+          |> List.find ~f:(fun file ->
+                 Printf.printf "file %s\n" @@ Filename.concat prefix file;
+                 try
+                   let stat = Unix.stat @@ Filename.concat prefix file in
+                   stat.st_rdev = stderr_stat.st_rdev
+                 with _ -> false)
+        in
+        match ret with None -> loop rest | Some ret -> Filename.concat prefix ret |> Option.some)
+  in
+  loop dev_prefixes
+
 let create_window () =
-  let%lwt tty_fd = open_tty "/dev/tty" in
-  let in_chan = Lwt_io.of_fd ~mode:Lwt_io.input tty_fd in
-  let out_chan = Lwt_io.of_fd ~mode:Lwt_io.output tty_fd in
-  LTerm.create tty_fd in_chan tty_fd out_chan
+  match get_tty_name () with
+  | Some tty ->
+      let%lwt tty_fd = open_tty tty in
+      let in_chan = Lwt_io.of_fd ~mode:Lwt_io.input tty_fd in
+      let out_chan = Lwt_io.of_fd ~mode:Lwt_io.output tty_fd in
+      LTerm.create tty_fd in_chan tty_fd out_chan
+  | None     -> LTerm.stdout |> Lazy.force
 
 type finalizer = unit -> unit
 
