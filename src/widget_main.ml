@@ -8,12 +8,10 @@ type action =
   | Change_filter
   | Quit
 
-type options = { maximum_height : int option }
-
 module Bindings = Zed_input.Make (LTerm_key)
 
 (** Implementation for main widget. *)
-class t ~box ~read_line ~information_line ~event_hub ~options:_ () =
+class t ~box ~read_line ~information_line ~event_hub () =
   let switch_filter, set_switcn_filter = React.S.create Partial_match in
   let quit, set_quit = React.S.create false in
   object (self)
