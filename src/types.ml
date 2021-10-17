@@ -14,8 +14,8 @@ type candidates = Candidate.t list
 (* Infomations to filtering candidates. *)
 module Info = struct
   type t = {
-    mutable current_candidate : string option;
-    mutable lines : Line.t list;
+    current_candidate : string option;
+    lines : Line.t list;
   }
 
   let empty = { current_candidate = None; lines = [] }
