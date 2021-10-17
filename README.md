@@ -2,7 +2,7 @@
 This tool is small program as finder, such like fzf, peco.
 
 # TODO #
-- [ ] Read from input asynchronously
+- [ ] improve performance on large size of input
 
 # Install #
 
@@ -29,6 +29,8 @@ $ ls | oif
 # Using pipe after oif is allowed
 $ ls | oif | sed -e 's/ /-/g'
 ```
+
+`oif` can read content from pipe asynchronously now.
 
 # Key bindings #
 
