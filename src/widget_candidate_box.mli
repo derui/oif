@@ -18,9 +18,6 @@ class t :
        method set_candidates : Types.candidates -> unit
        (** [set_candidates signal] set candidates to show in this box. *)
 
-       method set_maximum_height : int -> unit
-       (** [set_maximum_height height] set maximum height of view *)
-
        method bind : LTerm_key.t -> action -> unit
        (** [bind key action] bind an action to key. *)
      end

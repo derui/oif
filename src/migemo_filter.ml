@@ -19,7 +19,6 @@ module Make (A : Migemo_arg) = struct
       |> List.map ~f:(fun query -> Migemocaml.Migemo.query ~query A.migemo)
     in
 
-    let module I = Types.Info in
     let source = source () in
     let candidates = Seq.filter_map (Matcher.query queries) source in
     candidates

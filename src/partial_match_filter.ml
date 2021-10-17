@@ -6,7 +6,6 @@ module Partial_match = struct
   let unique_name = "Partial match"
 
   let filter ~source ~text =
-    let module I = Types.Info in
     let queries =
       Filter.split_query text
       |> List.filter ~f:(fun v -> String.length v > 0)

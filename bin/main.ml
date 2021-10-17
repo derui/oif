@@ -23,58 +23,25 @@ let change_filter t information_line = function
       information_line#set_filter_name filter_name;
       find_filter t filter_name |> Option.iter (fun filter -> t.App_state.current_filter <- filter)
 
-let load_lines channel =
-  let open Lwt in
-  catch
-    (fun () ->
-      let rec read_lines channel lines =
-        catch
-          (fun () -> Lwt_io.read_line channel >>= fun line -> read_lines channel (line :: lines))
-          (fun _ -> return @@ List.rev lines)
-      in
-      read_lines channel [])
-    (fun _ -> return [])
-
-let process_when_tty () =
-  let%lwt lines = load_lines Lwt_io.stdin in
-  Lwt.return lines
-
-let make_info lines = Lwt.return @@ Types.Info.init lines
-
-let filter_candidate app_state info text =
+let filter_candidate app_state lines =
   let module F = (val app_state.App_state.current_filter) in
-  F.filter ~source:(fun () -> List.to_seq info) ~text |> List.of_seq
-
-(* event handlers *)
-
-let selection_event_handler app_state box info text =
-  let module F = (val app_state.App_state.current_filter) in
-  let candidates = filter_candidate app_state info text in
-  box#set_candidates candidates
-
-let confirm_candidate_handler wakener info line_ids =
-  match line_ids with
-  | []            -> Lwt.wakeup_later wakener Confirmed_with_empty
-  | _ as line_ids ->
-      let hash_map : (Line.id, Candidate.t) Hashtbl.t = Hashtbl.create 10 in
-      Types.Info.to_candidates info |> List.iter ~f:(fun v -> Hashtbl.add hash_map v.Candidate.line.id v);
-      let v = line_ids |> List.filter_map ~f:(fun v -> Hashtbl.find_opt hash_map v) |> List.map ~f:Candidate.text in
-      Lwt.wakeup_later wakener (Confirm v)
-
-let change_filter_handler app_state filter = change_filter app_state filter
-
-let quit_handler wakener = function false -> () | true -> Lwt.wakeup_later wakener Quit
+  match app_state.current_query with
+  | None      -> List.map ~f:Candidate.make lines
+  | Some text -> F.filter ~source:(fun () -> List.to_seq lines) ~text |> List.of_seq
 
 let load_migemo_filter option =
-  option.Cli_option.migemo_dict_directory
-  |> Option.map (fun dict_dir ->
-         Migemocaml.Migemo.make_from_dir ~spec:(module Migemocaml.Regexp_spec.OCaml_str) ~base_dir:dict_dir ())
-  |> Option.join
-  |> Option.map (fun migemo : (module Filter.S) ->
-         (module Migemo_filter.Make (struct
-           let migemo = migemo
-         end)))
-  |> Option.to_list
+  let open Option.Let_syntax in
+  let v =
+    let* dict_dir = option.Cli_option.migemo_dict_directory in
+    let* migemo =
+      Migemocaml.Migemo.make_from_dir ~spec:(module Migemocaml.Regexp_spec.OCaml_str) ~base_dir:dict_dir ()
+    in
+    let module V = Migemo_filter.Make (struct
+      let migemo = migemo
+    end) in
+    Some (module V : Filter.S)
+  in
+  Option.to_list v
 
 let get_tty_name () =
   let dev_prefixes = [ "/dev/pts/"; "/dev/" ] in
@@ -88,7 +55,6 @@ let get_tty_name () =
         let ret =
           Array.to_list files
           |> List.find ~f:(fun file ->
-                 Printf.printf "file %s\n" @@ Filename.concat prefix file;
                  try
                    let stat = Unix.stat @@ Filename.concat prefix file in
                    stat.st_rdev = stderr_stat.st_rdev
@@ -107,6 +73,32 @@ let create_window () =
       LTerm.create tty_fd in_chan tty_fd out_chan
   | None     -> LTerm.stdout |> Lazy.force
 
+(* event handlers *)
+
+let selection_event_handler app_state box candidate_state =
+  let%lwt lines = Candidate_state.get_lines candidate_state in
+  let module F = (val app_state.App_state.current_filter) in
+  let candidates = filter_candidate app_state lines in
+  box#set_candidates candidates |> Lwt.return
+
+let confirm_candidate_handler wakener candidate_state line_ids =
+  let%lwt lines = Candidate_state.get_lines candidate_state in
+  let _ =
+    match line_ids with
+    | []            -> Lwt.wakeup_later wakener Confirmed_with_empty
+    | _ as line_ids ->
+        let candidates = List.map ~f:Candidate.make lines in
+        let hash_map : (Line.id, Candidate.t) Hashtbl.t = Hashtbl.create 10 in
+        candidates |> List.iter ~f:(fun v -> Hashtbl.add hash_map v.Candidate.line.id v);
+        let v = line_ids |> List.filter_map ~f:(fun v -> Hashtbl.find_opt hash_map v) |> List.map ~f:Candidate.text in
+        Lwt.wakeup_later wakener (Confirm v)
+  in
+  Lwt.return_unit
+
+let change_filter_handler app_state filter = change_filter app_state filter
+
+let quit_handler wakener = function false -> () | true -> Lwt.wakeup_later wakener Quit
+
 type finalizer = unit -> unit
 
 let finalizers = ref []
@@ -116,13 +108,14 @@ let add_finalizer finalizer = finalizers := finalizer :: !finalizers
 let () =
   Cli_option.parse (fun option ->
       let app_state =
-        {
-          App_state.current_filter = (module Partial_match_filter);
-          available_filters = [ (module Partial_match_filter : Filter.S) ] @ load_migemo_filter option;
-        }
+        App_state.make
+          ~current_filter:(module Partial_match_filter)
+          ~available_filters:([ (module Partial_match_filter : Filter.S) ] @ load_migemo_filter option)
       in
+      let candidate_state = Candidate_state.make () in
+      let async_reader = Async_line_reader.make () in
+
       let monad =
-        let%lwt info = Lwt.(process_when_tty () >>= make_info) in
         let%lwt window = create_window () in
 
         let box = new Widget_candidate_box.t () in
@@ -140,19 +133,13 @@ let () =
             ~information_line:(information_line :> LTerm_widget.t)
             ~event_hub:hub ()
         in
-        let candidates =
-          Types.Info.to_candidates info |> fun candidates ->
-          match option.query with None -> candidates | Some v -> filter_candidate app_state info.lines v
-        in
-        box#set_candidates candidates;
-        information_line#set_number_of_candidates @@ List.length candidates;
         information_line#set_filter_name @@ name_of_filter Widget_main.Partial_match;
 
         Option.iter
           (fun path ->
             let observer, finalizer = Event_recorder.init path in
             add_finalizer finalizer;
-            Event_hub.add_observer observer hub |> ignore)
+            hub |> Event_hub.add_observer observer |> ignore)
           option.Cli_option.record_event_path;
 
         Option.iter
@@ -161,34 +148,46 @@ let () =
             Lwt.async (fun () -> replay))
           option.Cli_option.replay_event_path;
 
+        React.S.changes candidate_state.signal
+        |> React.E.map (fun lines ->
+               information_line#set_number_of_candidates @@ List.length lines;
+               let candidates = filter_candidate app_state lines in
+               box#set_candidates candidates)
+        |> Lwt_react.E.keep;
+
         (* define event and handler *)
-        let () =
-          React.S.changes read_line#text
-          |> React.E.map (fun text -> selection_event_handler app_state box info.lines text)
-          |> Lwt_react.E.keep
-        in
-        let () =
-          React.S.changes term#switch_filter
-          |> React.E.map (change_filter_handler app_state information_line)
-          |> Lwt_react.E.keep
-        in
+        React.S.changes read_line#text
+        |> Lwt_react.E.map_s (fun text ->
+               app_state.current_query <- Some text;
+               selection_event_handler app_state box candidate_state)
+        |> Lwt_react.E.keep;
+        React.S.changes term#switch_filter
+        |> React.E.map (change_filter_handler app_state information_line)
+        |> Lwt_react.E.keep;
         let waiter, wakener = Lwt.task () in
-        let () = React.S.changes term#quit |> React.E.map (quit_handler wakener) |> Lwt_react.E.keep in
-        let () =
-          React.S.changes box#current_candidates
-          |> React.E.map (confirm_candidate_handler wakener info)
-          |> Lwt_react.E.keep
-        in
+        React.S.changes term#quit |> React.E.map (quit_handler wakener) |> Lwt_react.E.keep;
+        React.S.changes box#current_candidates
+        |> Lwt_react.E.map_s (confirm_candidate_handler wakener candidate_state)
+        |> Lwt_react.E.keep;
+
+        (* running asynchronous data reading *)
+        let read_async, close_read_async = Async_line_reader.read_async Lwt_unix.stdin async_reader in
+        Lwt.async (fun () -> read_async);
+        add_finalizer close_read_async;
+        let write_async = Candidate_state.write_async (Async_line_reader.mailbox async_reader) candidate_state in
+        Lwt.async (fun () -> write_async);
 
         let%lwt mode = LTerm.enter_raw_mode window in
-        try%lwt LTerm_widget.run window term waiter
-        with _ ->
-          let%lwt () = LTerm.leave_raw_mode window mode in
-          Lwt.return Quit
+        let%lwt status =
+          try%lwt LTerm_widget.run window term waiter
+          with _ ->
+            LTerm.leave_raw_mode window mode;%lwt
+            Lwt.return Quit
+        in
+        List.iter ~f:(fun v -> v ()) !finalizers;
+        Lwt.return status
       in
-      let result = Lwt_main.run monad in
-      List.iter ~f:(fun v -> v ()) !finalizers;
-      match result with
+      match Lwt_main.run monad with
       | Quit                 -> exit 130
       | Confirmed_with_empty -> exit 1
       | Confirm v            ->
