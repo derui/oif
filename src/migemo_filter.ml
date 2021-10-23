@@ -20,6 +20,6 @@ module Make (A : Migemo_arg) = struct
     in
 
     let source = source () in
-    let candidates = Seq.filter_map (Matcher.query queries) source in
+    let candidates = Seq.map (Matcher.apply_matched queries) source in
     candidates
 end

@@ -8,4 +8,4 @@ type direction =
   | Next
   | Prev
 
-type candidates = Candidate.t list
+type candidates = Candidate.t array

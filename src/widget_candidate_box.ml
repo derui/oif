@@ -1,8 +1,8 @@
 open CamomileLibraryDefault.Camomile
 open Oif_lib
-open Std
 module VW = Virtual_window
 module Bindings = Zed_input.Make (LTerm_key)
+module Array = Candidate_array
 
 let selection_prefix = "->"
 
@@ -19,8 +19,8 @@ type action =
 (** Implementation for the box to show candidate and navigate. *)
 class t () =
   let current_selection, set_selection = React.S.create 0 in
-  let candidates, set_candidates = React.S.create [||] in
-  let current_candidates, set_current_candidates = React.S.create ~eq:(fun _ _ -> false) [] in
+  let candidates, set_candidates = React.S.create ~eq:( == ) @@ Array.empty () in
+  let current_candidates, set_current_candidates = React.S.create ~eq:(fun _ _ -> false) [||] in
   let item_marker, set_item_marker = React.S.create ~eq:Item_marker.equal Item_marker.empty in
 
   let view_port_size ctx =
@@ -33,9 +33,9 @@ class t () =
 
     val mutable _virtual_window = VW.create ()
 
-    method set_candidates candidates =
-      let new_candidate_size = List.length candidates in
-      set_candidates @@ Array.of_list candidates;
+    method set_candidates candidates' =
+      set_candidates candidates';
+      let new_candidate_size = Candidate_array.length @@ React.S.value candidates in
       let selection = React.S.value current_selection in
       if new_candidate_size <= selection then set_selection (max 0 @@ min (pred new_candidate_size) selection) else ()
 
@@ -80,7 +80,7 @@ class t () =
       else
         let start_index = VW.Window.(start_index w) in
         Array.sub candidates start_index len
-        |> Array.iteri (fun index candidate ->
+        |> Array.iteri ~f:(fun index candidate ->
                let marked = Item_marker.is_marked candidate item_marker in
                self#draw_candidate ctx index (index = selection) candidate ~marked);
 
@@ -107,9 +107,10 @@ class t () =
 
           if Item_marker.is_empty current_marker then
             set_current_candidates
-              (if selection >= Array.length candidates then [] else [ candidates.(selection).line.id ])
+              (if selection >= Array.length candidates then [||]
+              else [| (Array.unsafe_get candidates selection).line.id |])
           else
-            let marked_lines = Item_marker.marked_lines current_marker |> List.of_seq in
+            let marked_lines = Item_marker.marked_lines current_marker |> Stdlib.Array.of_seq in
             set_current_candidates marked_lines
       | Toggle_mark       ->
           let candidates = React.S.value candidates
@@ -118,7 +119,7 @@ class t () =
           let start_index = VW.calculate_window _virtual_window |> VW.Window.start_index in
           let candidate_index = start_index + selection in
           if Array.length candidates > candidate_index then
-            set_item_marker (Item_marker.toggle_mark candidates.(candidate_index) current_marker)
+            set_item_marker (Item_marker.toggle_mark (Array.unsafe_get candidates candidate_index) current_marker)
           else ()
 
     method private handle_event event =

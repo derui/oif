@@ -8,4 +8,5 @@ let () =
       ("Std", Std_test.tests);
       ("Filter", Filter_test.tests);
       ("Timestamp", Timestamp_test.tests);
+      ("Candidate array", Candidate_array_test.tests);
     ]

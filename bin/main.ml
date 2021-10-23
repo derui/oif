@@ -9,26 +9,6 @@ type exit_status =
 
 let open_tty fname = Lwt_unix.openfile fname [ Lwt_unix.O_RDWR ] 0o666
 
-let find_filter t name = List.find ~f:(fun (module F : Filter.S) -> F.unique_name = name) t.App_state.available_filters
-
-let name_of_filter = function Widget_main.Partial_match -> "Partial match" | Widget_main.Migemo -> "Migemo"
-
-let change_filter t information_line = function
-  | Widget_main.Partial_match as v ->
-      let filter_name = name_of_filter v in
-      information_line#set_filter_name filter_name;
-      find_filter t filter_name |> Option.iter (fun filter -> t.App_state.current_filter <- filter)
-  | Widget_main.Migemo as v        ->
-      let filter_name = name_of_filter v in
-      information_line#set_filter_name filter_name;
-      find_filter t filter_name |> Option.iter (fun filter -> t.App_state.current_filter <- filter)
-
-let filter_candidate app_state lines =
-  let module F = (val app_state.App_state.current_filter) in
-  match app_state.current_query with
-  | None      -> List.map ~f:Candidate.make lines
-  | Some text -> F.filter ~source:(fun () -> List.to_seq lines) ~text |> List.of_seq
-
 let load_migemo_filter option =
   let open Option.Let_syntax in
   let v =
@@ -75,27 +55,35 @@ let create_window () =
 
 (* event handlers *)
 
-let selection_event_handler app_state box candidate_state =
-  let%lwt lines = Candidate_state.get_lines candidate_state in
-  let module F = (val app_state.App_state.current_filter) in
-  let candidates = filter_candidate app_state lines in
+let selection_event_handler app_state box query =
+  App_state.update_query query app_state;
+  let candidates =
+    App_state.current_candidates app_state |> Candidate_array.to_seq |> Seq.filter ~f:Candidate.is_matched
+    |> Candidate_array.of_seq
+  in
   box#set_candidates candidates |> Lwt.return
 
 let confirm_candidate_handler wakener candidate_state line_ids =
-  let%lwt lines = Candidate_state.get_lines candidate_state in
+  let%lwt candidates = Candidate_state.get_candidates candidate_state in
   let _ =
     match line_ids with
-    | []            -> Lwt.wakeup_later wakener Confirmed_with_empty
+    | [||]          -> Lwt.wakeup_later wakener Confirmed_with_empty
     | _ as line_ids ->
-        let candidates = List.map ~f:Candidate.make lines in
         let hash_map : (Line.id, Candidate.t) Hashtbl.t = Hashtbl.create 10 in
-        candidates |> List.iter ~f:(fun v -> Hashtbl.add hash_map v.Candidate.line.id v);
-        let v = line_ids |> List.filter_map ~f:(fun v -> Hashtbl.find_opt hash_map v) |> List.map ~f:Candidate.text in
+        candidates |> Candidate_array.iter ~f:(fun v -> Hashtbl.add hash_map v.Candidate.line.id v);
+        let v =
+          line_ids |> Array.to_list
+          |> List.filter_map ~f:(fun v -> Hashtbl.find_opt hash_map v)
+          |> List.map ~f:Candidate.text
+        in
         Lwt.wakeup_later wakener (Confirm v)
   in
   Lwt.return_unit
 
-let change_filter_handler app_state filter = change_filter app_state filter
+let change_filter_handler app_state information_line filter =
+  App_state.change_filter app_state filter;
+  let filter_name = App_state.name_of_filter filter in
+  information_line#set_filter_name filter_name
 
 let quit_handler wakener = function false -> () | true -> Lwt.wakeup_later wakener Quit
 
@@ -133,7 +121,7 @@ let () =
             ~information_line:(information_line :> LTerm_widget.t)
             ~event_hub:hub ()
         in
-        information_line#set_filter_name @@ name_of_filter Widget_main.Partial_match;
+        information_line#set_filter_name @@ App_state.name_of_filter Widget_main.Partial_match;
 
         Option.iter
           (fun path ->
@@ -149,17 +137,20 @@ let () =
           option.Cli_option.replay_event_path;
 
         React.S.changes candidate_state.signal
-        |> React.E.map (fun lines ->
-               information_line#set_number_of_candidates @@ List.length lines;
-               let candidates = filter_candidate app_state lines in
-               box#set_candidates candidates)
+        |> Lwt_react.E.map_s (fun candidate ->
+               let%lwt candidates = Candidate_state.get_candidates candidate_state in
+               information_line#set_number_of_candidates @@ Candidate_array.length candidates;
+
+               match candidate with
+               | [ candidate ] ->
+                   App_state.push_line ~candidate app_state;
+                   App_state.current_candidates app_state |> box#set_candidates |> Lwt.return
+               | _             -> Lwt.return_unit)
         |> Lwt_react.E.keep;
 
         (* define event and handler *)
         React.S.changes read_line#text
-        |> Lwt_react.E.map_s (fun text ->
-               app_state.current_query <- Some text;
-               selection_event_handler app_state box candidate_state)
+        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state box text)
         |> Lwt_react.E.keep;
         React.S.changes term#switch_filter
         |> React.E.map (change_filter_handler app_state information_line)

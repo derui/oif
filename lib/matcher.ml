@@ -8,9 +8,9 @@ module CaseMap = DF.Camomile.CaseMap.Make (UTF8)
 
 type query = string
 
-let query queries line =
+let apply_matched queries line =
   match queries with
-  | [] -> Some (C.make line)
+  | [] -> C.make line
   | _  ->
       let queries = List.map ~f:(fun v -> ReIntf.regexp v |> Re.compile) queries in
       let candidate = line.Line.text in
@@ -28,4 +28,5 @@ let query queries line =
             Option.value ~default:accum matches)
           ~init:[] queries
       in
-      if List.length queries <> List.length matched then None else Some (C.make ~matched line)
+      let matched = if List.length queries <> List.length matched then [] else matched in
+      C.make ~matched ~filtered:true line

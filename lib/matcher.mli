@@ -1,3 +1,3 @@
 type query = string
 
-val query : query list -> Line.t -> Candidate.t option
+val apply_matched : query list -> Line.t -> Candidate.t

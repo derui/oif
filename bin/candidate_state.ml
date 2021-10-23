@@ -1,26 +1,29 @@
 open Oif_lib
 
 type t = {
-  mutable lines : Line.t list;
+  candidates : Candidate_array.t;
   mutex : Lwt_mutex.t;
-  signal : Line.t list React.signal;
-  write_signal : Line.t list -> unit;
+  signal : Candidate.t list React.signal;
+  write_signal : Candidate.t list -> unit;
 }
 
 let make () =
   let signal, write_signal = React.S.create ~eq:(fun _ _ -> false) [] in
-  { lines = []; mutex = Lwt_mutex.create (); signal; write_signal }
+  { candidates = Candidate_array.empty (); mutex = Lwt_mutex.create (); signal; write_signal }
 
 let write_async mailbox t =
   let rec loop () =
     let%lwt line = Lwt_mvar.take mailbox in
-    Lwt_mutex.with_lock t.mutex (fun () ->
-        let length = t.lines |> List.length in
-        t.lines <- Line.make ~id:(succ length) ~text:line :: t.lines;
-        t.lines |> List.rev |> t.write_signal;
-        Lwt.return_unit);%lwt
+    let%lwt candidate =
+      Lwt_mutex.with_lock t.mutex (fun () ->
+          let length = t.candidates |> Candidate_array.length in
+          let candidate = Line.make ~id:(succ length) ~text:line |> Candidate.make in
+          Candidate_array.push ~value:candidate t.candidates;
+          Lwt.return candidate)
+    in
+    t.write_signal [ candidate ];
     loop ()
   in
   loop ()
 
-let get_lines t = Lwt_mutex.with_lock t.mutex (fun () -> t.lines |> List.rev |> Lwt.return)
+let get_candidates t = Lwt_mutex.with_lock t.mutex (fun () -> t.candidates |> Lwt.return)

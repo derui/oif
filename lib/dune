@@ -1,4 +1,5 @@
 (library
  (name oif_lib)
  (flags (:standard -safe-string))
- (libraries camomile re))
+ (libraries camomile re)
+ (preprocess (pps ppx_deriving.show ppx_deriving.eq)))

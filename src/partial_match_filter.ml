@@ -11,7 +11,7 @@ module Partial_match = struct
       |> List.filter ~f:(fun v -> String.length v > 0)
       |> List.map ~f:(fun v -> Printf.sprintf "^.*\\(%s\\)" v)
     in
-    let candidates = source () |> Seq.filter_map (Matcher.query queries) in
+    let candidates = source () |> Seq.map (Matcher.apply_matched queries) in
     candidates
 end
 
