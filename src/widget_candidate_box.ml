@@ -18,7 +18,7 @@ type action =
 
 (** Implementation for the box to show candidate and navigate. *)
 class t () =
-  let current_selection, set_selection = React.S.create 0 in
+  let current_selection, set_selection = React.S.create ~eq:(fun _ _ -> false) 0 in
   let candidates, set_candidates = React.S.create ~eq:( == ) @@ Array.empty () in
   let current_candidates, set_current_candidates = React.S.create ~eq:(fun _ _ -> false) [||] in
   let item_marker, set_item_marker = React.S.create ~eq:Item_marker.equal Item_marker.empty in
@@ -62,6 +62,8 @@ class t () =
       else ()
 
     method private draw_selection ctx row =
+      let size = LTerm_draw.size ctx in
+      let row = min row @@ pred size.rows in
       let rect = { LTerm_geom.row1 = row; row2 = row + 1; col1 = 0; col2 = String.length selection_prefix } in
       let ctx = LTerm_draw.sub ctx rect in
       Zed_string.of_utf8 selection_prefix
@@ -84,6 +86,7 @@ class t () =
                let marked = Item_marker.is_marked candidate item_marker in
                self#draw_candidate ctx index (index = selection) candidate ~marked);
 
+        let selection = selection - start_index in
         if Array.length candidates > 0 then self#draw_selection ctx selection else ()
 
     method! draw ctx _ =
@@ -97,9 +100,12 @@ class t () =
       match action with
       | Next_candidate    ->
           if candidate_size <= 0 then ()
-          else set_selection (min candidate_size @@ (React.S.value current_selection |> succ))
+          else
+            let next_selection = React.S.value current_selection |> succ in
+            set_selection (min candidate_size next_selection)
       | Prev_candidate    ->
-          if candidate_size <= 0 then () else set_selection (max 0 @@ (React.S.value current_selection |> pred))
+          let current_selection = React.S.value current_selection |> pred in
+          if candidate_size <= 0 then () else set_selection (max 0 current_selection)
       | Confirm_candidate ->
           let candidates = React.S.value candidates
           and selection = React.S.value current_selection
