@@ -76,6 +76,10 @@ class t ?(prompt = "QUERY> ") ?(query = "") () =
       (let open LTerm_key in
       [ { control = false; meta = false; shift = false; code = Enter } ])
       [];
+    LTerm_edit.bind
+      (let open LTerm_key in
+      [ { control = false; meta = false; shift = false; code = Tab } ])
+      [];
 
     self#add ~expand:false (new label prompt ());
     self#add text_widget
