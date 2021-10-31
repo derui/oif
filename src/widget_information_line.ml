@@ -20,7 +20,7 @@ class label_num_of_candidates () =
       let style = { LTerm_style.none with foreground = Some LTerm_style.green } in
       LTerm_draw.draw_string ctx 0 0 ~style text
 
-    val mutable _event_cache = React.E.create () |> fst
+    val mutable _event_cache = React.E.never
 
     initializer
     _event_cache <-
@@ -49,7 +49,7 @@ class label_filter_name () =
       let style = { LTerm_style.none with foreground = Some LTerm_style.lgreen } in
       LTerm_draw.draw_string ctx 0 0 ~style text
 
-    val mutable _event_cache = React.E.create () |> fst
+    val mutable _event_cache = React.E.never
 
     initializer
     _event_cache <-

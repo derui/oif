@@ -52,10 +52,11 @@ class t ~box ~read_line ~information_line ~event_hub () =
       let e = Events.to_lterm_event e in
       if self#handle_event e then ()
       else (
-        box#send_event e;
-        read_line#send_event e)
+        read_line#send_event e;
+        box#send_event e)
     in
     Event_hub.add_observer observer event_hub |> ignore;
+
     self#on_event (fun e ->
         let event = Events.kind_of_lterm_event e in
         Option.iter (fun e -> Event_hub.dispatch e event_hub) event;

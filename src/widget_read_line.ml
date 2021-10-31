@@ -1,5 +1,3 @@
-open CamomileLibraryDefault.Camomile
-
 type prompt = LTerm_text.t
 
 type text = string
@@ -49,7 +47,7 @@ class t ?(prompt = "QUERY> ") ?(query = "") () =
 
     method set_prompt v = set_prompt v
 
-    val mutable _text_event = React.E.create () |> fst
+    val mutable _text_event = React.E.never
 
     initializer
     Zed_edit.insert text_widget#context @@ Zed_rope.of_string @@ Zed_string.of_utf8 query;
@@ -64,23 +62,7 @@ class t ?(prompt = "QUERY> ") ?(query = "") () =
         text_widget#send_event e;
         true);
 
-    LTerm_edit.bind
-      (let open LTerm_key in
-      [ { control = true; meta = false; shift = false; code = Char (UChar.of_char 'p') } ])
-      [];
-    LTerm_edit.bind
-      (let open LTerm_key in
-      [ { control = true; meta = false; shift = false; code = Char (UChar.of_char 'n') } ])
-      [];
-    LTerm_edit.bind
-      (let open LTerm_key in
-      [ { control = false; meta = false; shift = false; code = Enter } ])
-      [];
-    LTerm_edit.bind
-      (let open LTerm_key in
-      [ { control = false; meta = false; shift = false; code = Tab } ])
-      [];
-
     self#add ~expand:false (new label prompt ());
-    self#add text_widget
+    self#add text_widget;
+    text_widget#set_parent None
   end

@@ -134,9 +134,9 @@ class t () =
           let resolver = Bindings.resolver [ Bindings.pack (fun x -> x) bindings ] in
           (match Bindings.resolve key resolver with Bindings.Accepted action -> self#exec action | _ -> ());
           true
-      | _                   -> true
+      | _                   -> false
 
-    val mutable _selection_update_event = React.E.create () |> fst
+    val mutable _selection_update_event = React.E.never
 
     initializer
     (* keep event reference *)
