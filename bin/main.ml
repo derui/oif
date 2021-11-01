@@ -21,7 +21,7 @@ let load_migemo_filter option =
     end) in
     Some (module V : Filter.S)
   in
-  Option.to_list v
+  Option.to_list v |> List.map ~f:(fun m -> (Widget_main.Migemo, m))
 
 let get_tty_name () =
   let dev_prefixes = [ "/dev/pts/"; "/dev/" ] in
@@ -98,7 +98,8 @@ let () =
       let app_state =
         App_state.make
           ~current_filter:(module Partial_match_filter)
-          ~available_filters:([ (module Partial_match_filter : Filter.S) ] @ load_migemo_filter option)
+          ~available_filters:
+            ([ (Widget_main.Partial_match, (module Partial_match_filter : Filter.S)) ] @ load_migemo_filter option)
       in
       let candidate_state = Candidate_state.make () in
       let async_reader = Async_line_reader.make () in
@@ -114,12 +115,13 @@ let () =
         end) in
         let module I = (val TR.make ()) in
         let hub = Event_hub.make (module I) in
+        let available_filters = app_state.available_filters |> List.map ~f:fst in
         let term =
           new Widget_main.t
             ~box:(box :> LTerm_widget.t)
             ~read_line:(read_line :> LTerm_widget.t)
             ~information_line:(information_line :> LTerm_widget.t)
-            ~event_hub:hub ()
+            ~available_filters ~event_hub:hub ()
         in
         information_line#set_filter_name @@ App_state.name_of_filter Widget_main.Partial_match;
 

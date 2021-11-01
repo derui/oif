@@ -8,6 +8,7 @@ class t :
   -> read_line:LTerm_widget.t
   -> information_line:LTerm_widget.t
   -> event_hub:Event_hub.t
+  -> available_filters:filter list
   -> unit
   -> object
        inherit LTerm_widget.vbox

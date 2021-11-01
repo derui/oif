@@ -4,7 +4,7 @@ open Oif
 
 type t = {
   mutable current_filter : (module Filter.S);
-  available_filters : (module Filter.S) list;
+  available_filters : (Widget_main.filter * (module Filter.S)) list;
   mutable current_query : string option;
   all_candidates : Candidate_array.t;
   mutable current_candidates : Candidate_array.t;
@@ -43,10 +43,8 @@ let update_query query t =
           ~text:query
         |> Candidate_array.of_seq
 
-let find_filter name t = List.find ~f:(fun (module F : Filter.S) -> F.unique_name = name) t.available_filters
+let find_filter filter t = List.find ~f:(fun (filter', _) -> filter = filter') t.available_filters
 
 let name_of_filter = function Widget_main.Partial_match -> "Partial match" | Widget_main.Migemo -> "Migemo"
 
-let change_filter t filter =
-  let filter_name = name_of_filter filter in
-  t |> find_filter filter_name |> Option.iter (fun filter -> t.current_filter <- filter)
+let change_filter t filter = t |> find_filter filter |> Option.iter (fun (_, filter) -> t.current_filter <- filter)

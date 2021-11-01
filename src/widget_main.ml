@@ -11,9 +11,14 @@ type action =
 module Bindings = Zed_input.Make (LTerm_key)
 
 (** Implementation for main widget. *)
-class t ~box ~read_line ~information_line ~event_hub () =
+class t ~box ~read_line ~information_line ~event_hub ~available_filters () =
   let switch_filter, set_switcn_filter = React.S.create Partial_match in
   let quit, set_quit = React.S.create false in
+
+  let get_filter_to_switch = function
+    | Partial_match -> List.find_opt (function Migemo -> true | _ -> false) available_filters
+    | Migemo        -> List.find_opt (function Partial_match -> true | _ -> false) available_filters
+  in
   object (self)
     inherit LTerm_widget.vbox
 
@@ -31,9 +36,7 @@ class t ~box ~read_line ~information_line ~event_hub () =
       function
       | Change_filter -> (
           let current_filter = React.S.value switch_filter in
-          match current_filter with
-          | Partial_match -> set_switcn_filter Migemo
-          | Migemo        -> set_switcn_filter Partial_match)
+          match get_filter_to_switch current_filter with Some filter -> set_switcn_filter filter | None -> ())
       | Quit          -> set_quit true
 
     method private handle_event event =
