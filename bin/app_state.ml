@@ -4,10 +4,11 @@ open Oif
 
 type t = {
   mutable current_filter : (module Filter.S);
-  available_filters : (Widget_main.filter * (module Filter.S)) list;
+  mutable available_filters : (Widget_main.filter * (module Filter.S)) list;
   mutable current_query : string option;
   all_candidates : Candidate_array.t;
   mutable current_candidates : Candidate_array.t;
+  change_filter_mutex : Lwt_mutex.t;
 }
 
 let make ~current_filter ~available_filters =
@@ -17,7 +18,10 @@ let make ~current_filter ~available_filters =
     current_query = None;
     current_candidates = Candidate_array.empty ();
     all_candidates = Candidate_array.empty ();
+    change_filter_mutex = Lwt_mutex.create ();
   }
+
+let update_available_filters t filters = t.available_filters <- filters
 
 let current_candidates t = match t.current_query with None -> t.all_candidates | Some _ -> t.current_candidates
 
@@ -47,4 +51,12 @@ let find_filter filter t = List.find ~f:(fun (filter', _) -> filter = filter') t
 
 let name_of_filter = function Widget_main.Partial_match -> "Partial match" | Widget_main.Migemo -> "Migemo"
 
-let change_filter t filter = t |> find_filter filter |> Option.iter (fun (_, filter) -> t.current_filter <- filter)
+let change_filter t filter =
+  Lwt_mutex.with_lock t.change_filter_mutex (fun () ->
+      t |> find_filter filter |> Option.iter (fun (_, filter) -> t.current_filter <- filter);
+      Lwt.return_unit)
+
+let current_filter_name t =
+  Lwt_mutex.with_lock t.change_filter_mutex (fun () ->
+      let module F = (val t.current_filter : Filter.S) in
+      F.unique_name |> Lwt.return)

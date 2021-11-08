@@ -9,7 +9,7 @@ type exit_status =
 
 let open_tty fname = Lwt_unix.openfile fname [ Lwt_unix.O_RDWR ] 0o666
 
-let load_migemo_filter option =
+let load_migemo_filter option cb =
   let open Option.Let_syntax in
   let v =
     let* dict_dir = option.Cli_option.migemo_dict_directory in
@@ -21,7 +21,7 @@ let load_migemo_filter option =
     end) in
     Some (module V : Filter.S)
   in
-  Option.to_list v |> List.map ~f:(fun m -> (Widget_main.Migemo, m))
+  Option.to_list v |> List.map ~f:(fun m -> (Widget_main.Migemo, m)) |> cb
 
 let get_tty_name () =
   let dev_prefixes = [ "/dev/pts/"; "/dev/" ] in
@@ -80,10 +80,11 @@ let confirm_candidate_handler wakener candidate_state line_ids =
   in
   Lwt.return_unit
 
-let change_filter_handler app_state information_line filter =
-  App_state.change_filter app_state filter;
-  let filter_name = App_state.name_of_filter filter in
-  information_line#set_filter_name filter_name
+let change_filter_handler ~before_change app_state information_line filter =
+  let%lwt () = before_change app_state in
+  let%lwt () = App_state.change_filter app_state filter in
+  let%lwt filter_name = App_state.current_filter_name app_state in
+  information_line#set_filter_name filter_name |> Lwt.return
 
 let quit_handler wakener = function false -> () | true -> Lwt.wakeup_later wakener Quit
 
@@ -98,8 +99,15 @@ let () =
       let app_state =
         App_state.make
           ~current_filter:(module Partial_match_filter)
-          ~available_filters:
-            ([ (Widget_main.Partial_match, (module Partial_match_filter : Filter.S)) ] @ load_migemo_filter option)
+          ~available_filters:[ (Widget_main.Partial_match, (module Partial_match_filter : Filter.S)) ]
+      in
+
+      let before_change app_state =
+        let migemo_initialized = App_state.find_filter Widget_main.Migemo app_state |> Option.is_some in
+        if migemo_initialized then Lwt.return_unit
+        else
+          load_migemo_filter option (fun f ->
+              App_state.update_available_filters app_state (app_state.available_filters @ f) |> Lwt.return)
       in
       let candidate_state = Candidate_state.make () in
       let async_reader = Async_line_reader.make () in
@@ -155,7 +163,7 @@ let () =
         |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state box text)
         |> Lwt_react.E.keep;
         React.S.changes term#switch_filter
-        |> React.E.map (change_filter_handler app_state information_line)
+        |> Lwt_react.E.map_s (change_filter_handler app_state information_line ~before_change)
         |> Lwt_react.E.keep;
         let waiter, wakener = Lwt.task () in
         React.S.changes term#quit |> React.E.map (quit_handler wakener) |> Lwt_react.E.keep;
@@ -165,9 +173,9 @@ let () =
 
         (* running asynchronous data reading *)
         let read_async, close_read_async = Async_line_reader.read_async Lwt_unix.stdin async_reader in
-        Lwt.async (fun () -> read_async);
-        add_finalizer close_read_async;
         let write_async = Candidate_state.write_async (Async_line_reader.mailbox async_reader) candidate_state in
+        add_finalizer close_read_async;
+        Lwt.async (fun () -> read_async);
         Lwt.async (fun () -> write_async);
 
         let%lwt mode = LTerm.enter_raw_mode window in
