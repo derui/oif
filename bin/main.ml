@@ -192,5 +192,6 @@ let () =
       | Quit                 -> exit 130
       | Confirmed_with_empty -> exit 1
       | Confirm v            ->
-          List.iter ~f:(fun v -> Printf.printf "%s\n" v) v;
+          let delimiter = if option.print_nul then Char.chr 0 |> String.make 1 else "\n" in
+          String.concat delimiter v |> Printf.printf "%s\n";
           exit 0)

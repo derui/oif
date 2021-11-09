@@ -4,6 +4,7 @@ type t = {
   query : string option;
   record_event_path : string option;
   replay_event_path : string option;
+  print_nul : bool;
 }
 
 val empty : t
