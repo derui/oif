@@ -9,7 +9,7 @@ module Partial_match = struct
     let queries =
       Filter.split_query text
       |> List.filter ~f:(fun v -> String.length v > 0)
-      |> List.map ~f:(fun v -> Printf.sprintf "^.*\\(%s\\)" v)
+      |> List.map ~f:(fun v -> Printf.sprintf "\\(%s\\)" v)
     in
     let candidates = source () |> Seq.map (Matcher.apply_matched queries) in
     candidates
