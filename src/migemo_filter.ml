@@ -15,7 +15,7 @@ module Make (A : Migemo_arg) = struct
   let filter ~source ~text =
     let queries =
       Filter.split_query text
-      |> List.filter ~f:(fun v -> String.length v > 0)
+      |> List.filter ~f:(fun v -> String.length v > 2)
       |> List.map ~f:(fun query -> Migemocaml.Migemo.query ~query A.migemo)
     in
 
