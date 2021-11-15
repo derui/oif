@@ -19,7 +19,7 @@ let apply_matched queries line =
           ~f:(fun accum regexp ->
             let open Option.Let_syntax in
             let matches =
-              let* texts = Re.search_forward ~sem:`Longest regexp (CaseMap.lowercase candidate) 0 in
+              let* texts = Re.search_forward ~sem:`Longest regexp candidate 0 in
               let* first = if Array.length texts < 2 then None else texts.(1) in
               let first' = Re.SubText.first first |> Re.SubText.ur_index_of first in
               let v = (first', first' + (String.length @@ Re.SubText.excerpt first)) in

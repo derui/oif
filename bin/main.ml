@@ -57,10 +57,7 @@ let create_window () =
 
 let selection_event_handler app_state box query =
   App_state.update_query query app_state;
-  let candidates =
-    App_state.current_candidates app_state |> Candidate_array.to_seq |> Seq.filter ~f:Candidate.is_matched
-    |> Candidate_array.of_seq
-  in
+  let candidates = App_state.current_candidates app_state in
   box#set_candidates candidates |> Lwt.return
 
 let confirm_candidate_handler wakener candidate_state line_ids =

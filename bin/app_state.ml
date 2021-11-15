@@ -42,10 +42,9 @@ let update_query query t =
   | Some query ->
       t.current_candidates <-
         F.filter
-          ~source:(fun () ->
-            Array.to_seq @@ Candidate_array.to_array t.all_candidates |> Seq.map (fun v -> v.Candidate.line))
+          ~source:(fun () -> Candidate_array.to_seq t.all_candidates |> Seq.map (fun v -> v.Candidate.line))
           ~text:query
-        |> Candidate_array.of_seq
+        |> Seq.filter ~f:Candidate.is_matched |> Candidate_array.of_seq
 
 let find_filter filter t = List.find ~f:(fun (filter', _) -> filter = filter') t.available_filters
 
