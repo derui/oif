@@ -18,5 +18,5 @@ val toggle_mark : Candidate.t -> t -> t
 val is_marked : Candidate.t -> t -> bool
 (** [is_marked candidate t] get current status of [candidate] in [t] *)
 
-val marked_lines : t -> Line.id Seq.t
+val marked_lines : t -> Candidate.id Seq.t
 (** [marked_lines t] get id of lines marked in [t] *)

@@ -12,14 +12,12 @@ end
 module Make (A : Migemo_arg) = struct
   let unique_name = "Migemo"
 
-  let filter ~source ~text =
+  let filter ~candidate ~query =
     let queries =
-      Filter.split_query text
+      Filter.split_query query
       |> List.filter ~f:(fun v -> String.length v > 2)
       |> List.map ~f:(fun query -> Migemocaml.Migemo.query ~query A.migemo)
     in
 
-    let source = source () in
-    let candidates = Seq.map (Matcher.apply_matched queries) source in
-    candidates
+    Filter.apply_matched queries candidate
 end

@@ -1,22 +1,20 @@
-type matched = int * int [@@deriving show, eq]
+open CamomileLibraryDefault.Camomile
 
 type id = int [@@deriving show, eq]
 
 type t = {
-  line : Line.t;
-  matched : matched list;
-  filtered : bool;
+  id : id;
+  text : UTF8.t;
 }
-[@@deriving show, eq]
 
-let id { line; _ } = line.id
+let id { id; _ } = id
 
-let make ?(matched = []) ?(filtered = false) line = { line; matched; filtered }
+let text { text; _ } = text
 
-let filtered { filtered; _ } = filtered
+let make ~id ~text = { id; text }
 
-let text { line = { Line.text; _ }; _ } = text
+let equal v1 v2 = v1.id = v2.id
 
-let matched { matched; _ } = matched
+let show t = Printf.sprintf "{id=%d,text=%s}" t.id t.text
 
-let is_matched { matched; filtered; _ } = if not filtered then true else match matched with [] -> false | _ -> true
+let pp fmt t = Format.fprintf fmt "%s" @@ show t

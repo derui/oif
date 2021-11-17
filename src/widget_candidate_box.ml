@@ -2,7 +2,7 @@ open CamomileLibraryDefault.Camomile
 open Oif_lib
 module VW = Virtual_window
 module Bindings = Zed_input.Make (LTerm_key)
-module Array = Candidate_array
+module Array = Vector
 
 let selection_prefix = "->"
 
@@ -19,7 +19,10 @@ type action =
 (** Implementation for the box to show candidate and navigate. *)
 class t () =
   let current_selection, set_selection = React.S.create ~eq:(fun _ _ -> false) 0 in
-  let candidates, set_candidates = React.S.create ~eq:( == ) @@ Array.empty () in
+  let candidates, set_candidates = React.S.create ~eq:(fun _ _ -> false) @@ ref @@ Vector.empty () in
+  let matcher, set_matcher =
+    React.S.create ~eq:(fun _ _ -> false) @@ Matcher.make ~candidates:(ref @@ Vector.empty ())
+  in
   let current_candidates, set_current_candidates = React.S.create ~eq:(fun _ _ -> false) [||] in
   let item_marker, set_item_marker = React.S.create ~eq:Item_marker.equal Item_marker.empty in
 
@@ -35,9 +38,11 @@ class t () =
 
     method set_candidates candidates' =
       set_candidates candidates';
-      let new_candidate_size = Candidate_array.length @@ React.S.value candidates in
+      let new_candidate_size = Array.length !candidates' in
       let selection = React.S.value current_selection in
       if new_candidate_size <= selection then set_selection (max 0 @@ min (pred new_candidate_size) selection) else ()
+
+    method set_matcher v = set_matcher v
 
     method current_candidates = current_candidates
 
@@ -45,12 +50,12 @@ class t () =
 
     method bind key action = bindings <- Bindings.add [ key ] action bindings
 
-    method private draw_candidate ctx l selected candidate ~marked =
+    method private draw_candidate ctx l selected candidate ~marked ~result =
       let module C = Candidate_style in
       let size = LTerm_draw.size ctx in
       let rect = { LTerm_geom.row1 = l; row2 = l + 1; col1 = prefix_length; col2 = LTerm_geom.cols size } in
       let ctx' = LTerm_draw.sub ctx rect in
-      let text = C.make_styled_candidate ~selected candidate in
+      let text = C.make_styled_candidate ~selected ~result candidate in
       LTerm_draw.draw_styled ctx' 0 0 text;
 
       if marked then
@@ -69,34 +74,42 @@ class t () =
       Zed_string.of_utf8 selection_prefix
       |> LTerm_draw.draw_string ctx 0 0 ~style:{ LTerm_style.none with foreground = Some LTerm_style.lred }
 
-    method private render ctx candidates selection item_marker =
+    method private render ctx candidates selection item_marker matcher =
+      let match_results = Matcher.match_results matcher and matched_indices = Matcher.matched_indices matcher in
       let view_port_height = view_port_size ctx in
       _virtual_window <-
-        VW.update_total_rows (Array.length candidates) _virtual_window
+        VW.update_total_rows (Array.length matched_indices) _virtual_window
         |> VW.update_view_port_size view_port_height
         |> VW.update_focused_row selection;
 
       let w = VW.calculate_window _virtual_window in
-      let len = succ @@ VW.Window.(end_index w - start_index w) in
-      if Array.length candidates <= 0 then ()
+      let len = VW.Window.(end_index w - start_index w) in
+      if Array.length matched_indices <= 0 then ()
       else
         let start_index = VW.Window.(start_index w) in
-        Array.sub candidates start_index len
-        |> Array.iteri ~f:(fun index candidate ->
+        Array.sub matched_indices start_index len
+        |> Array.iteri ~f:(fun index matched_index ->
+               let candidate = Array.unsafe_get candidates matched_index
+               and match_result =
+                 if Array.length match_results < Array.length matched_indices then Match_result.empty
+                 else Array.unsafe_get match_results matched_index
+               in
                let marked = Item_marker.is_marked candidate item_marker in
-               self#draw_candidate ctx index (index = selection) candidate ~marked);
+               self#draw_candidate ctx index (index = selection) candidate ~marked ~result:match_result);
 
         let selection = selection - start_index in
-        if Array.length candidates > 0 then self#draw_selection ctx selection else ()
+        if Array.length matched_indices > 0 then self#draw_selection ctx selection else ()
 
     method! draw ctx _ =
       let candidates = React.S.value candidates in
+      let matcher = React.S.value matcher in
       let current_selection = React.S.value current_selection in
       let item_marker = React.S.value item_marker in
-      self#render ctx candidates current_selection item_marker
+      self#render ctx !candidates current_selection item_marker matcher
 
     method private exec action =
-      let candidate_size = React.S.value candidates |> Array.length |> pred in
+      let candidates = React.S.value candidates in
+      let candidate_size = !candidates |> Array.length |> pred in
       match action with
       | Next_candidate    ->
           if candidate_size <= 0 then ()
@@ -107,25 +120,21 @@ class t () =
           let current_selection = React.S.value current_selection |> pred in
           if candidate_size <= 0 then () else set_selection (max 0 current_selection)
       | Confirm_candidate ->
-          let candidates = React.S.value candidates
-          and selection = React.S.value current_selection
-          and current_marker = React.S.value item_marker in
+          let selection = React.S.value current_selection and current_marker = React.S.value item_marker in
 
           if Item_marker.is_empty current_marker then
             set_current_candidates
-              (if selection >= Array.length candidates then [||]
-              else [| (Array.unsafe_get candidates selection).line.id |])
+              (if selection >= Array.length !candidates then [||]
+              else [| (Array.unsafe_get !candidates selection).Candidate.id |])
           else
             let marked_lines = Item_marker.marked_lines current_marker |> Stdlib.Array.of_seq in
             set_current_candidates marked_lines
       | Toggle_mark       ->
-          let candidates = React.S.value candidates
-          and selection = React.S.value current_selection
-          and current_marker = React.S.value item_marker in
+          let selection = React.S.value current_selection and current_marker = React.S.value item_marker in
           let start_index = VW.calculate_window _virtual_window |> VW.Window.start_index in
           let candidate_index = start_index + selection in
-          if Array.length candidates > candidate_index then
-            set_item_marker (Item_marker.toggle_mark (Array.unsafe_get candidates candidate_index) current_marker)
+          if Array.length !candidates > candidate_index then
+            set_item_marker (Item_marker.toggle_mark (Array.unsafe_get !candidates candidate_index) current_marker)
           else ()
 
     method private handle_event event =
@@ -146,6 +155,7 @@ class t () =
           React.E.stamp (React.S.changes current_selection) ignore;
           React.E.stamp (React.S.changes candidates) ignore;
           React.E.stamp (React.S.changes item_marker) ignore;
+          React.E.stamp (React.S.changes matcher) ignore;
         ]
       |> React.E.map (fun _ -> self#queue_draw);
     self#on_event self#handle_event;

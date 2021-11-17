@@ -1,4 +1,3 @@
-module L = Oif_lib.Line
 module C = Oif_lib.Candidate
 
 let tests =
@@ -6,33 +5,7 @@ let tests =
     ( "make new candidate",
       `Quick,
       fun () ->
-        let line = L.make ~id:1 ~text:"text" in
-        let candidate = C.make line in
-        Alcotest.(check int) "id" 1 @@ C.id candidate;
-        Alcotest.(check string) "text" "text" @@ C.text candidate;
-        Alcotest.(check @@ list @@ pair int int) "matched" [] @@ C.matched candidate );
-    ( "should be able to get matched list if it is passed",
-      `Quick,
-      fun () ->
-        let line = L.make ~id:1 ~text:"text" in
-        let candidate = C.make ~matched:[ (1, 3) ] line in
-        Alcotest.(check @@ list @@ pair int int) "matched" [ (1, 3) ] @@ C.matched candidate );
-    ( "should be matched if it is filtered and have matching list",
-      `Quick,
-      fun () ->
-        let line = L.make ~id:1 ~text:"text" in
-        let candidate = C.make ~filtered:true ~matched:[ (1, 3) ] line in
-        Alcotest.(check bool) "matched" true @@ C.is_matched candidate );
-    ( "should not be matched if it is filtered and have any matching list",
-      `Quick,
-      fun () ->
-        let line = L.make ~id:1 ~text:"text" in
-        let candidate = C.make ~filtered:true ~matched:[] line in
-        Alcotest.(check bool) "matched" false @@ C.is_matched candidate );
-    ( "should be matched always if it is not filtered",
-      `Quick,
-      fun () ->
-        let line = L.make ~id:1 ~text:"text" in
-        let candidate = C.make ~filtered:false ~matched:[] line in
-        Alcotest.(check bool) "matched" true @@ C.is_matched candidate );
+        let line = C.make ~id:1 ~text:"text" in
+        Alcotest.(check int) "id" 1 line.id;
+        Alcotest.(check string) "text" "text" line.text );
   ]

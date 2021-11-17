@@ -1,4 +1,3 @@
-module L = Oif_lib.Line
 module F = Oif_lib.Filter
 
 let tests =

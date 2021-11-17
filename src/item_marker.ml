@@ -24,4 +24,4 @@ let toggle_mark candidate { marked_lines } =
 
 let marked_lines { marked_lines } = Int_set.to_seq marked_lines
 
-let is_marked candidate { marked_lines } = Int_set.mem candidate.Candidate.line.id marked_lines
+let is_marked candidate { marked_lines } = Int_set.mem candidate.Candidate.id marked_lines

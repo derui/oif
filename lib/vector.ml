@@ -1,9 +1,13 @@
-type t = {
-  mutable array : Candidate.t option array;
+type 'a t = {
+  mutable array : 'a option array;
   mutable last_index : int;
 }
 
 let empty () = { array = Array.of_list []; last_index = -1 }
+
+let make count value = { array = Array.make count (Some value); last_index = pred count }
+
+let init count f = { array = Array.init count (fun i -> f i |> Option.some); last_index = pred count }
 
 let expand t =
   let old = t.array in
@@ -14,6 +18,9 @@ let length t = succ t.last_index
 
 let unsafe_get t index =
   if t.last_index < index then raise (Invalid_argument "invalid index") else t.array.(index) |> Option.get
+
+let unsafe_set t index value =
+  if t.last_index < index then raise (Invalid_argument "invalid index") else t.array.(index) <- Some value
 
 let map ~f t =
   let array = Array.map (fun v -> Option.map f v) t.array in

@@ -1,32 +1,39 @@
-open Std
-open CamomileLibraryDefault.Camomile
-module DF = CamomileLibraryDefault
-module C = Candidate
-module ReIntf = DF.Camomile.UReStr
-module Re = ReIntf.Make (UTF8)
-module CaseMap = DF.Camomile.CaseMap.Make (UTF8)
+module V = Vector
 
-type query = string
+type candidates = Candidate.t Vector.t ref
 
-let apply_matched queries line =
-  match queries with
-  | [] -> C.make line
-  | _  ->
-      let queries = List.map ~f:(fun v -> ReIntf.regexp v |> Re.compile) queries in
-      let candidate = line.Line.text in
-      let matched =
-        List.fold_left
-          ~f:(fun accum regexp ->
-            let open Option.Let_syntax in
-            let matches =
-              let* texts = Re.search_forward ~sem:`Longest regexp candidate 0 in
-              let* first = if Array.length texts < 2 then None else texts.(1) in
-              let first' = Re.SubText.first first |> Re.SubText.ur_index_of first in
-              let v = (first', first' + (String.length @@ Re.SubText.excerpt first)) in
-              Some (v :: accum)
-            in
-            Option.value ~default:accum matches)
-          ~init:[] queries
-      in
-      let matched = if List.length queries <> List.length matched then [] else matched in
-      C.make ~matched ~filtered:true line
+type match_results = Match_result.t Vector.t
+
+type t = {
+  candidates : candidates;
+  mutable previous_candidate_size : int;
+  mutable match_results : match_results;
+  mutable matched_indices : int Vector.t;
+}
+
+let make ~candidates =
+  { candidates; previous_candidate_size = 0; match_results = V.empty (); matched_indices = V.empty () }
+
+let apply_filter ~filter ~query t =
+  let module F = (val filter : Filter_intf.S) in
+  let v = t.candidates in
+  let matched_indices = V.empty () in
+  let candidates_size = V.length !v in
+  let match_results =
+    if t.previous_candidate_size <> candidates_size then V.make (V.length !v) Match_result.empty else t.match_results
+  in
+  !v
+  |> V.iteri ~f:(fun index v ->
+         let result = F.filter ~query ~candidate:v in
+         if Match_result.is_matched result then V.push ~value:index matched_indices else ();
+         V.unsafe_set match_results index result);
+  t.previous_candidate_size <- candidates_size;
+  t.match_results <- match_results;
+  t.matched_indices <- matched_indices
+
+let match_results { match_results; _ } = match_results
+
+let matched_indices t =
+  let current_candidate_size = V.length !(t.candidates) in
+  if t.previous_candidate_size = 0 then t.matched_indices <- V.init current_candidate_size (fun v -> v) else ();
+  t.matched_indices

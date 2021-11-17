@@ -20,12 +20,12 @@ let matched_style = { LTerm_style.none with LTerm_style.foreground = Some LTerm_
 
 let selected_style = { LTerm_style.none with LTerm_style.bold = Some true }
 
-let make_styled_candidate ~selected t =
+let make_styled_candidate ~selected ~result candidate =
   let module O = Oif_lib in
-  match O.Candidate.matched t with
-  | [] -> LTerm_text.eval [ LTerm_text.S (O.Candidate.text t) ]
-  | _  ->
-      let merged_style_range = Oif_lib.Range.merge t.matched in
+  match O.Match_result.matched result with
+  | []      -> LTerm_text.eval [ LTerm_text.S (O.Candidate.text candidate) ]
+  | matched ->
+      let merged_style_range = Oif_lib.Range.merge matched in
       let styled_texts =
         let text, rest, _ =
           List.fold_left
@@ -45,7 +45,7 @@ let make_styled_candidate ~selected t =
                 :: acc
               in
               (acc, after, e))
-            ~init:([], O.Candidate.text t, 0)
+            ~init:([], O.Candidate.text candidate, 0)
             merged_style_range
         in
         [ LTerm_text.S rest ] :: text |> List.rev |> List.flatten

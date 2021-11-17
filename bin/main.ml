@@ -57,8 +57,9 @@ let create_window () =
 
 let selection_event_handler app_state box query =
   App_state.update_query query app_state;
-  let candidates = App_state.current_candidates app_state in
-  box#set_candidates candidates |> Lwt.return
+  let candidates = app_state.all_candidates in
+  box#set_candidates candidates;
+  box#set_matcher app_state.matcher |> Lwt.return
 
 let confirm_candidate_handler wakener candidate_state line_ids =
   let%lwt candidates = Candidate_state.get_candidates candidate_state in
@@ -66,8 +67,8 @@ let confirm_candidate_handler wakener candidate_state line_ids =
     match line_ids with
     | [||]          -> Lwt.wakeup_later wakener Confirmed_with_empty
     | _ as line_ids ->
-        let hash_map : (Line.id, Candidate.t) Hashtbl.t = Hashtbl.create 10 in
-        candidates |> Candidate_array.iter ~f:(fun v -> Hashtbl.add hash_map v.Candidate.line.id v);
+        let hash_map : (Candidate.id, Candidate.t) Hashtbl.t = Hashtbl.create 10 in
+        candidates |> Vector.iter ~f:(fun v -> Hashtbl.add hash_map v.Candidate.id v);
         let v =
           line_ids |> Array.to_list
           |> List.filter_map ~f:(fun v -> Hashtbl.find_opt hash_map v)
@@ -129,6 +130,7 @@ let () =
             ~available_filters ~event_hub:hub ()
         in
         information_line#set_filter_name @@ App_state.name_of_filter Widget_main.Partial_match;
+        box#set_matcher app_state.matcher;
 
         Option.iter
           (fun path ->
@@ -146,12 +148,12 @@ let () =
         React.S.changes candidate_state.signal
         |> Lwt_react.E.map_s (fun candidate ->
                let%lwt candidates = Candidate_state.get_candidates candidate_state in
-               information_line#set_number_of_candidates @@ Candidate_array.length candidates;
+               information_line#set_number_of_candidates @@ Vector.length candidates;
 
                match candidate with
                | [ candidate ] ->
                    App_state.push_line ~candidate app_state;
-                   App_state.current_candidates app_state |> box#set_candidates |> Lwt.return
+                   app_state.all_candidates |> box#set_candidates |> Lwt.return
                | _             -> Lwt.return_unit)
         |> Lwt_react.E.keep;
 
@@ -179,6 +181,7 @@ let () =
         let%lwt status =
           try%lwt LTerm_widget.run window term waiter
           with _ ->
+            Printexc.print_backtrace stdout;
             LTerm.leave_raw_mode window mode;%lwt
             Lwt.return Quit
         in
