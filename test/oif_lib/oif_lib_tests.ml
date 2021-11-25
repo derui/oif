@@ -10,4 +10,5 @@ let () =
       ("Timestamp", Timestamp_test.tests);
       ("Vector", Vector_test.tests);
       ("Matcher", Matcher_test.tests);
+      ("Ustring", Ustring_test.tests);
     ]
