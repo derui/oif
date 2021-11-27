@@ -2,7 +2,6 @@
 This tool is small program as finder, such like fzf, peco.
 
 # TODO #
-- [ ] improve performance on large size of input
 
 # Install #
 
