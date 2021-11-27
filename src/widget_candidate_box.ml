@@ -108,8 +108,10 @@ class t () =
       self#render ctx !candidates current_selection item_marker matcher
 
     method private exec action =
+      let matcher = React.S.value matcher in
       let candidates = React.S.value candidates in
-      let candidate_size = !candidates |> Array.length |> pred in
+      let matched_indices = Matcher.matched_indices matcher in
+      let candidate_size = matched_indices |> Array.length |> pred in
       match action with
       | Next_candidate    ->
           if candidate_size <= 0 then ()
@@ -124,8 +126,7 @@ class t () =
 
           if Item_marker.is_empty current_marker then
             set_current_candidates
-              (if selection >= Array.length !candidates then [||]
-              else [| (Array.unsafe_get !candidates selection).Candidate.id |])
+              (if selection >= candidate_size then [||] else [| Array.unsafe_get matched_indices selection |])
           else
             let marked_lines = Item_marker.marked_lines current_marker |> Stdlib.Array.of_seq in
             set_current_candidates marked_lines
@@ -133,7 +134,8 @@ class t () =
           let selection = React.S.value current_selection and current_marker = React.S.value item_marker in
           let start_index = VW.calculate_window _virtual_window |> VW.Window.start_index in
           let candidate_index = start_index + selection in
-          if Array.length !candidates > candidate_index then
+          let candidate_index = Array.unsafe_get matched_indices candidate_index in
+          if candidate_size > candidate_index then
             set_item_marker (Item_marker.toggle_mark (Array.unsafe_get !candidates candidate_index) current_marker)
           else ()
 

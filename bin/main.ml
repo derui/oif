@@ -67,14 +67,9 @@ let confirm_candidate_handler wakener candidate_state line_ids =
     match line_ids with
     | [||]          -> Lwt.wakeup_later wakener Confirmed_with_empty
     | _ as line_ids ->
-        let hash_map : (Candidate.id, Candidate.t) Hashtbl.t = Hashtbl.create 10 in
-        candidates |> Vector.iter ~f:(fun v -> Hashtbl.add hash_map v.Candidate.id v);
-        let v =
-          line_ids |> Array.to_list
-          |> List.filter_map ~f:(fun v -> Hashtbl.find_opt hash_map v)
-          |> List.map ~f:Candidate.text
-        in
-        Lwt.wakeup_later wakener (Confirm v)
+        let ret = ref [] in
+        Array.iter (fun index -> ret := (Vector.unsafe_get candidates index |> Candidate.text) :: !ret) line_ids;
+        Lwt.wakeup_later wakener (Confirm !ret)
   in
   Lwt.return_unit
 
