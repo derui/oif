@@ -27,6 +27,12 @@ let tests =
         let part = "b" and src = "abc" in
         let actual = U.index ~src ~part in
         Alcotest.(check int) "not found" 1 actual );
+    ( "do not first index if partial string in part is found",
+      `Quick,
+      fun () ->
+        let part = "bd" and src = "abc" in
+        let actual = U.index ~src ~part in
+        Alcotest.(check int) "not found" (-1) actual );
     ( "get first index for Unicode",
       `Quick,
       fun () ->

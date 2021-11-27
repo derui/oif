@@ -18,17 +18,21 @@ let tests =
           [ candidate "testing"; candidate "next" ] |> List.map (fun v -> F.filter ~candidate:v ~query:"test")
         in
 
-        let ret = ret |> List.map M.is_matched in
-        Alcotest.(check @@ list bool) "empty" [ true; false ] ret );
-    ( "return only matched candidates that is matched with splitted queries",
+        let matches = ret |> List.map M.is_matched in
+        let positions = ret |> List.map M.matched in
+        Alcotest.(check @@ list @@ list @@ pair int int) "empty" [ [ (0, 4) ]; [] ] positions;
+        Alcotest.(check @@ list bool) "empty" [ true; false ] matches );
+    ( "return only matched candidates that is matched with split queries",
       `Quick,
       fun () ->
         let ret =
           [ candidate "testing"; candidate "next" ] |> List.map (fun v -> F.filter ~candidate:v ~query:"te ing")
         in
 
-        let ret = ret |> List.map M.is_matched in
-        Alcotest.(check @@ list bool) "empty" [ true; false ] ret );
+        let matches = ret |> List.map M.is_matched in
+        let positions = ret |> List.map M.matched in
+        Alcotest.(check @@ list bool) "empty" [ true; false ] matches;
+        Alcotest.(check @@ list @@ list @@ pair int int) "empty" [ [ (0, 2); (4, 7) ]; [] ] positions );
     ( "return empty result when query did not match all lines",
       `Quick,
       fun () ->
