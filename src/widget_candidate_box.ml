@@ -83,7 +83,7 @@ class t () =
         |> VW.update_focused_row selection;
 
       let w = VW.calculate_window _virtual_window in
-      let len = VW.Window.(end_index w - start_index w) in
+      let len = succ @@ VW.Window.(end_index w - start_index w) in
       if Array.length matched_indices <= 0 then ()
       else
         let start_index = VW.Window.(start_index w) in
