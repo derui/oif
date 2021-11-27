@@ -76,4 +76,14 @@ let tests =
         V.unsafe_set array 0 10;
         let actual = V.to_array array in
         Alcotest.(check @@ array int) "makes" [| 10; 1 |] actual );
+    ( "should be able to iterate with index",
+      `Quick,
+      fun () ->
+        let ret = ref [] in
+        let candidate = candidate ~id:1 ~text:"text" in
+        let array = V.empty () in
+        Seq.range ~stop:`exclusive 0 5 |> Seq.iter (fun v -> V.push ~value:(succ v) array);
+        V.iteri ~f:(fun i v -> ret := (i, v) :: !ret) array;
+        Alcotest.(check int) "length" 5 @@ List.length !ret;
+        Alcotest.(check @@ list @@ pair int int) "text" [ (4, 5); (3, 4); (2, 3); (1, 2); (0, 1) ] !ret );
   ]

@@ -18,7 +18,7 @@ let merge ranges =
       | Some (s', e') ->
           if s > e' then (
             incr current_pos;
-            merged_ranges.(!current_pos) <- Some (s, e) )
+            merged_ranges.(!current_pos) <- Some (s, e))
           else merged_ranges.(!current_pos) <- Some (s', max e e'))
     ranges';
-  Array.to_seq merged_ranges |> Seq.filter Option.is_some |> Seq.map Option.get |> List.of_seq
+  Array.to_seq merged_ranges |> Seq.filter_map (fun v -> v) |> List.of_seq
