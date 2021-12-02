@@ -23,6 +23,7 @@ depends: [
   "migemocaml" {< "0.5.0"}
   "cmdliner" {< "2.0.0"}
   "alcotest" {with-test & < "2.0.0"}
+  "alcotest-lwt" {with-test & < "2.0.0"}
   "ppx_protocol_conv_json" { < "6.0"}
   "ppx_deriving" {>= "4.2.1"}
   "yojson"
