@@ -63,14 +63,14 @@ let selection_event_handler app_state box information_line query =
   box#set_candidates candidates;
   box#set_matcher app_state.matcher |> Lwt.return
 
-let confirm_candidate_handler wakener candidate_state line_ids =
+let confirm_candidate_handler wakener candidate_state selected_indices =
   let%lwt candidates = Candidate_state.get_candidates candidate_state in
   let _ =
-    match line_ids with
-    | [||]          -> Lwt.wakeup_later wakener Confirmed_with_empty
-    | _ as line_ids ->
+    match selected_indices with
+    | [||] -> Lwt.wakeup_later wakener Confirmed_with_empty
+    | _    ->
         let ret = ref [] in
-        Array.iter (fun index -> ret := (Vector.unsafe_get candidates index |> Candidate.text) :: !ret) line_ids;
+        Array.iter (fun index -> ret := (Vector.unsafe_get candidates index |> Candidate.text) :: !ret) selected_indices;
         Lwt.wakeup_later wakener (Confirm !ret)
   in
   Lwt.return_unit
