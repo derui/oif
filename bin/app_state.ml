@@ -47,3 +47,8 @@ let current_filter_name t =
   Lwt_mutex.with_lock t.change_filter_mutex (fun () ->
       let module F = (val t.current_filter : Filter.S) in
       F.unique_name |> Lwt.return)
+
+let count_of_matches { all_candidates; matcher; current_query; _ } =
+  match current_query with
+  | None   -> Vector.length !all_candidates
+  | Some _ -> Vector.length @@ Matcher.matched_indices matcher

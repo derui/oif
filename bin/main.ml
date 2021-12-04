@@ -55,9 +55,11 @@ let create_window () =
 
 (* event handlers *)
 
-let selection_event_handler app_state box query =
+let selection_event_handler app_state box information_line query =
   App_state.update_query query app_state;
   let candidates = app_state.all_candidates in
+  let number = App_state.count_of_matches app_state in
+  information_line#set_number_of_candidates number;
   box#set_candidates candidates;
   box#set_matcher app_state.matcher |> Lwt.return
 
@@ -142,8 +144,8 @@ let () =
 
         React.S.changes candidate_state.signal
         |> Lwt_react.E.map_s (fun candidate ->
-               let%lwt candidates = Candidate_state.get_candidates candidate_state in
-               information_line#set_number_of_candidates @@ Vector.length candidates;
+               let number = App_state.count_of_matches app_state in
+               information_line#set_number_of_candidates number;
 
                match candidate with
                | [ candidate ] ->
@@ -154,7 +156,7 @@ let () =
 
         (* define event and handler *)
         React.S.changes read_line#text
-        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state box text)
+        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state box information_line text)
         |> Lwt_react.E.keep;
         React.S.changes term#switch_filter
         |> Lwt_react.E.map_s (change_filter_handler app_state information_line ~before_change)
