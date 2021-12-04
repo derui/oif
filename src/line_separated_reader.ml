@@ -22,11 +22,7 @@ module S = struct
               (fun () ->
                 let open Lwt.Infix in
                 Lwt_io.read_line_opt channel
-                >>= (function
-                      | None      -> return_unit
-                      | Some line ->
-                          Printf.printf "line\n";
-                          Lwt_mvar.put mvar line)
+                >>= (function None -> return_unit | Some line -> Lwt_mvar.put mvar line)
                 >>= read_lines channel)
               (fun _ -> return_unit)
           in

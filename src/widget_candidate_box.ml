@@ -111,13 +111,14 @@ class t () =
       let matcher = React.S.value matcher in
       let candidates = React.S.value candidates in
       let matched_indices = Matcher.matched_indices matcher in
-      let candidate_size = matched_indices |> Array.length |> pred in
+      let candidate_size = matched_indices |> Array.length in
+      let allowed_index = pred candidate_size in
       match action with
       | Next_candidate    ->
           if candidate_size <= 0 then ()
           else
             let next_selection = React.S.value current_selection |> succ in
-            set_selection (min candidate_size next_selection)
+            set_selection (min allowed_index next_selection)
       | Prev_candidate    ->
           let current_selection = React.S.value current_selection |> pred in
           if candidate_size <= 0 then () else set_selection (max 0 current_selection)
