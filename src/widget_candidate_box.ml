@@ -3,6 +3,7 @@ open Oif_lib
 module VW = Virtual_window
 module Bindings = Zed_input.Make (LTerm_key)
 module Array = Vector
+module S = Candidate_selector
 
 let selection_prefix = "->"
 
@@ -18,7 +19,7 @@ type action =
 
 (** Implementation for the box to show candidate and navigate. *)
 class t () =
-  let current_selection, set_selection = React.S.create ~eq:(fun _ _ -> false) 0 in
+  let selector, set_selector = React.S.create ~eq:(fun _ _ -> false) @@ Candidate_selector.make () in
   let candidates, set_candidates = React.S.create ~eq:(fun _ _ -> false) @@ ref @@ Vector.empty () in
   let matcher, set_matcher =
     React.S.create ~eq:(fun _ _ -> false) @@ Matcher.make ~candidates:(ref @@ Vector.empty ())
@@ -39,8 +40,7 @@ class t () =
     method set_candidates candidates' =
       set_candidates candidates';
       let new_candidate_size = Array.length !candidates' in
-      let selection = React.S.value current_selection in
-      if new_candidate_size <= selection then set_selection (max 0 @@ min (pred new_candidate_size) selection) else ()
+      React.S.value selector |> S.restrict_with_limit ~limit:new_candidate_size |> set_selector
 
     method set_matcher v = set_matcher v
 
@@ -94,7 +94,7 @@ class t () =
                  if Array.length match_results < Array.length matched_indices then Match_result.empty
                  else Array.unsafe_get match_results matched_index
                in
-               let marked = Item_marker.is_marked candidate item_marker in
+               let marked = Item_marker.is_marked ~index:matched_index item_marker in
                self#draw_candidate ctx index (index = selection) candidate ~marked ~result:match_result);
 
         let selection = selection - start_index in
@@ -103,41 +103,35 @@ class t () =
     method! draw ctx _ =
       let candidates = React.S.value candidates in
       let matcher = React.S.value matcher in
-      let current_selection = React.S.value current_selection in
       let item_marker = React.S.value item_marker in
-      self#render ctx !candidates current_selection item_marker matcher
+      let selection = React.S.value selector |> S.current_selected_index in
+      self#render ctx !candidates selection item_marker matcher
 
     method private exec action =
       let matcher = React.S.value matcher in
-      let candidates = React.S.value candidates in
       let matched_indices = Matcher.matched_indices matcher in
       let candidate_size = matched_indices |> Array.length in
-      let allowed_index = pred candidate_size in
       match action with
-      | Next_candidate    ->
-          if candidate_size <= 0 then ()
-          else
-            let next_selection = React.S.value current_selection |> succ in
-            set_selection (min allowed_index next_selection)
-      | Prev_candidate    ->
-          let current_selection = React.S.value current_selection |> pred in
-          if candidate_size <= 0 then () else set_selection (max 0 current_selection)
+      | Next_candidate    -> set_selector @@ S.select_next ~indices:matched_indices @@ React.S.value selector
+      | Prev_candidate    -> set_selector @@ S.select_previous @@ React.S.value selector
       | Confirm_candidate ->
-          let selection = React.S.value current_selection and current_marker = React.S.value item_marker in
+          let selected_index = React.S.value selector |> S.current_selected_index
+          and current_marker = React.S.value item_marker in
 
           if Item_marker.is_empty current_marker then
             set_current_candidates
-              (if selection >= candidate_size then [||] else [| Array.unsafe_get matched_indices selection |])
+              (if selected_index >= candidate_size then [||] else [| Array.unsafe_get matched_indices selected_index |])
           else
-            let marked_lines = Item_marker.marked_lines current_marker |> Stdlib.Array.of_seq in
-            set_current_candidates marked_lines
+            let marked_indices = Item_marker.marked_indices current_marker |> Stdlib.Array.of_seq in
+            set_current_candidates marked_indices
       | Toggle_mark       ->
-          let selection = React.S.value current_selection and current_marker = React.S.value item_marker in
+          let selected_index = React.S.value selector |> S.current_selected_index
+          and marker = React.S.value item_marker in
           let start_index = VW.calculate_window _virtual_window |> VW.Window.start_index in
-          let candidate_index = start_index + selection in
+          let candidate_index = start_index + selected_index in
           let candidate_index = Array.unsafe_get matched_indices candidate_index in
           if candidate_size > candidate_index then
-            set_item_marker (Item_marker.toggle_mark (Array.unsafe_get !candidates candidate_index) current_marker)
+            set_item_marker (Item_marker.toggle_mark ~index:candidate_index marker)
           else ()
 
     method private handle_event event =
@@ -155,7 +149,7 @@ class t () =
     _selection_update_event <-
       React.E.select
         [
-          React.E.stamp (React.S.changes current_selection) ignore;
+          React.E.stamp (React.S.changes selector) ignore;
           React.E.stamp (React.S.changes candidates) ignore;
           React.E.stamp (React.S.changes item_marker) ignore;
           React.E.stamp (React.S.changes matcher) ignore;

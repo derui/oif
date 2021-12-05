@@ -1,27 +1,28 @@
 open Oif_lib
 
+type candidate_id = Candidate.id
+
 module Int_set = Set.Make (struct
   type t = int
 
   let compare = Stdlib.compare
 end)
 
-type t = { marked_lines : Int_set.t }
+type t = { marked_indices : Int_set.t }
 
-let equal v1 v2 = Int_set.equal v1.marked_lines v2.marked_lines
+let equal v1 v2 = Int_set.equal v1.marked_indices v2.marked_indices
 
-let empty = { marked_lines = Int_set.empty }
+let empty = { marked_indices = Int_set.empty }
 
-let is_empty { marked_lines } = Int_set.is_empty marked_lines
+let is_empty { marked_indices } = Int_set.is_empty marked_indices
 
-let toggle_mark candidate { marked_lines } =
-  let line_id = Candidate.id candidate in
+let toggle_mark ~index { marked_indices } =
   {
-    marked_lines =
-      (if Int_set.mem line_id marked_lines then Int_set.remove line_id marked_lines
-      else Int_set.add line_id marked_lines);
+    marked_indices =
+      (if Int_set.mem index marked_indices then Int_set.remove index marked_indices
+      else Int_set.add index marked_indices);
   }
 
-let marked_lines { marked_lines } = Int_set.to_seq marked_lines
+let marked_indices { marked_indices } = Int_set.to_seq marked_indices
 
-let is_marked candidate { marked_lines } = Int_set.mem candidate.Candidate.id marked_lines
+let is_marked ~index { marked_indices } = Int_set.mem index marked_indices

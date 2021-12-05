@@ -6,6 +6,8 @@ type matched_indices = int Vector.t
 
 type index = int
 
+type size = int
+
 val make : unit -> t
 (** [make ()] create new instance of [t]. *)
 
@@ -17,3 +19,6 @@ val select_previous : t -> t
 
 val current_selected_index : t -> index
 (** [current_selected_index t] get current position that is [t] selected *)
+
+val restrict_with_limit : limit:size -> t -> t
+(** [restrict_with_limit ~limit t] get new [t] with limit *)

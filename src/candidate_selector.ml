@@ -4,6 +4,8 @@ type matched_indices = int Vector.t
 
 type index = int
 
+and size = int
+
 type t = { current_position : index }
 
 let make () = { current_position = 0 }
@@ -21,3 +23,5 @@ let select_previous t =
   { current_position = max 0 next_position }
 
 let current_selected_index t = t.current_position
+
+let restrict_with_limit ~limit t = { current_position = max 0 @@ min t.current_position limit }
