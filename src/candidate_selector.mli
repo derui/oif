@@ -2,6 +2,8 @@ open Oif_lib
 
 type t
 
+type candidate_id = Candidate.id
+
 type matched_indices = int Vector.t
 
 type index = int
@@ -22,3 +24,11 @@ val current_selected_index : t -> index
 
 val restrict_with_limit : limit:size -> t -> t
 (** [restrict_with_limit ~limit t] get new [t] with limit *)
+
+val marked_indices : t -> candidate_id List.t
+(** [marked_indices t] get id of lines marked in [t] *)
+
+val toggle_mark : id:candidate_id -> t -> t
+(** [toggle_mark id t] toggle mark for [candidate] in [t] *)
+
+val is_marked : id:candidate_id -> t -> bool

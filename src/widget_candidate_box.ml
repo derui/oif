@@ -25,7 +25,6 @@ class t () =
     React.S.create ~eq:(fun _ _ -> false) @@ Matcher.make ~candidates:(ref @@ Vector.empty ())
   in
   let current_candidates, set_current_candidates = React.S.create ~eq:(fun _ _ -> false) [||] in
-  let item_marker, set_item_marker = React.S.create ~eq:Item_marker.equal Item_marker.empty in
 
   let view_port_size ctx =
     let size = LTerm_draw.size ctx in
@@ -74,7 +73,8 @@ class t () =
       Zed_string.of_utf8 selection_prefix
       |> LTerm_draw.draw_string ctx 0 0 ~style:{ LTerm_style.none with foreground = Some LTerm_style.lred }
 
-    method private render ctx candidates selection item_marker matcher =
+    method private render ctx candidates selector matcher =
+      let selection = S.current_selected_index selector in
       let match_results = Matcher.match_results matcher and matched_indices = Matcher.matched_indices matcher in
       let view_port_height = view_port_size ctx in
       _virtual_window <-
@@ -94,7 +94,7 @@ class t () =
                  if Array.length match_results < Array.length matched_indices then Match_result.empty
                  else Array.unsafe_get match_results matched_index
                in
-               let marked = Item_marker.is_marked ~index:matched_index item_marker in
+               let marked = S.is_marked ~id:matched_index selector in
                self#draw_candidate ctx index (index = selection) candidate ~marked ~result:match_result);
 
         let selection = selection - start_index in
@@ -103,9 +103,8 @@ class t () =
     method! draw ctx _ =
       let candidates = React.S.value candidates in
       let matcher = React.S.value matcher in
-      let item_marker = React.S.value item_marker in
-      let selection = React.S.value selector |> S.current_selected_index in
-      self#render ctx !candidates selection item_marker matcher
+      let selector = React.S.value selector in
+      self#render ctx !candidates selector matcher
 
     method private exec action =
       let matcher = React.S.value matcher in
@@ -115,24 +114,23 @@ class t () =
       | Next_candidate    -> set_selector @@ S.select_next ~indices:matched_indices @@ React.S.value selector
       | Prev_candidate    -> set_selector @@ S.select_previous @@ React.S.value selector
       | Confirm_candidate ->
-          let selected_index = React.S.value selector |> S.current_selected_index
-          and current_marker = React.S.value item_marker in
-
-          if Item_marker.is_empty current_marker then
-            set_current_candidates
-              (if selected_index >= candidate_size then [||] else [| Array.unsafe_get matched_indices selected_index |])
-          else
-            let marked_indices = Item_marker.marked_indices current_marker |> Stdlib.Array.of_seq in
-            set_current_candidates marked_indices
+          let selector = React.S.value selector in
+          let marked_indices = S.marked_indices selector in
+          let marked_indices =
+            match marked_indices with
+            | [] ->
+                let selected_index = S.current_selected_index selector in
+                if selected_index >= candidate_size then [||] else [| Array.unsafe_get matched_indices selected_index |]
+            | _  -> List.to_seq marked_indices |> Stdlib.Array.of_seq
+          in
+          set_current_candidates marked_indices
       | Toggle_mark       ->
-          let selected_index = React.S.value selector |> S.current_selected_index
-          and marker = React.S.value item_marker in
+          let selector = React.S.value selector in
+          let selected_index = S.current_selected_index selector in
           let start_index = VW.calculate_window _virtual_window |> VW.Window.start_index in
           let candidate_index = start_index + selected_index in
           let candidate_index = Array.unsafe_get matched_indices candidate_index in
-          if candidate_size > candidate_index then
-            set_item_marker (Item_marker.toggle_mark ~index:candidate_index marker)
-          else ()
+          if candidate_size > candidate_index then set_selector (S.toggle_mark ~id:candidate_index selector) else ()
 
     method private handle_event event =
       match event with
@@ -151,7 +149,6 @@ class t () =
         [
           React.E.stamp (React.S.changes selector) ignore;
           React.E.stamp (React.S.changes candidates) ignore;
-          React.E.stamp (React.S.changes item_marker) ignore;
           React.E.stamp (React.S.changes matcher) ignore;
         ]
       |> React.E.map (fun _ -> self#queue_draw);
