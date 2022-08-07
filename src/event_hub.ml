@@ -24,3 +24,6 @@ let add_observer observer { observers; _ } =
   in
   observers := observer :: !observers;
   deleter
+
+
+let call_deleter f = f ()

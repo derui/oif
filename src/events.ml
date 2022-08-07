@@ -1,8 +1,5 @@
 open Oif_lib
 
-open CamomileLibraryDefault.Camomile
-(** This module provides functionally for all actions in Oif. *)
-
 (** type of events. *)
 type kind = Key of LTerm_key.t
 
@@ -21,7 +18,7 @@ type key_event_json = {
 [@@deriving protocol ~driver:(module Protocol_conv_json.Json)]
 
 let to_json_code = function
-  | LTerm_key.Char ch -> UChar.code ch |> string_of_int
+  | LTerm_key.Char ch -> Uchar.to_int ch |> string_of_int
   | Enter             -> "Enter"
   | Escape            -> "Escape"
   | Tab               -> "Tab"
@@ -76,7 +73,7 @@ let of_json_code = function
   | "Insert"    -> Insert
   | "Delete"    -> Delete
   | "Backspace" -> Backspace
-  | _ as v      -> Char (UChar.of_int @@ int_of_string v)
+  | _ as v      -> Char (Uchar.of_int @@ int_of_string v)
 
 let make ~kind ~timestamp = { kind; timestamp }
 

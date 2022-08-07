@@ -17,7 +17,7 @@ let tests =
       `Quick,
       fun () ->
         let candidates = ref @@ V.empty () in
-        let t = C.make ~matcher:(fun () -> Matcher.make candidates) ~candidates:(fun () -> !candidates) in
+        let t = C.make ~matcher:(fun () -> Matcher.make ~candidates) ~candidates:(fun () -> !candidates) in
         let ret = ref [] in
         C.iter_with_matching ~f:(fun v -> ret := v.candidate :: !ret) ~offset:0 ~size:0 t;
         Alcotest.(check @@ list candidate_t) "initial" [] !ret );
@@ -25,7 +25,7 @@ let tests =
       `Quick,
       fun () ->
         let candidates = ref @@ V.empty () in
-        let matcher = Matcher.make candidates in
+        let matcher = Matcher.make ~candidates in
         let t = C.make ~matcher:(fun () -> matcher) ~candidates:(fun () -> !candidates) in
         let candidate = Candidate.make ~id:1 ~text:"foo" in
         V.push ~value:candidate !candidates;
@@ -37,7 +37,7 @@ let tests =
       `Quick,
       fun () ->
         let candidates = ref @@ V.empty () in
-        let matcher = Matcher.make candidates in
+        let matcher = Matcher.make ~candidates in
         let t = C.make ~matcher:(fun () -> matcher) ~candidates:(fun () -> !candidates) in
         let candidate = Candidate.make ~id:1 ~text:"foo" in
         V.push ~value:candidate !candidates;
@@ -50,7 +50,7 @@ let tests =
       `Quick,
       fun () ->
         let candidate_vec = ref @@ V.empty () in
-        let matcher = Matcher.make candidate_vec in
+        let matcher = Matcher.make ~candidates:candidate_vec in
         let t = C.make ~matcher:(fun () -> matcher) ~candidates:(fun () -> !candidate_vec) in
         let candidates = to_candidates [ (1, "text"); (2, "foo") ] in
         List.iter (fun value -> V.push ~value !candidate_vec) candidates;
@@ -63,7 +63,7 @@ let tests =
       `Quick,
       fun () ->
         let candidate_vec = ref @@ V.empty () in
-        let matcher = Matcher.make candidate_vec in
+        let matcher = Matcher.make ~candidates:candidate_vec in
         let t = C.make ~matcher:(fun () -> matcher) ~candidates:(fun () -> !candidate_vec) in
         let candidates = to_candidates [ (1, "text"); (2, "foo") ] in
         List.iter (fun value -> V.push ~value !candidate_vec) candidates;
@@ -77,7 +77,7 @@ let tests =
       `Quick,
       fun () ->
         let candidate_vec = ref @@ V.empty () in
-        let matcher = Matcher.make candidate_vec in
+        let matcher = Matcher.make ~candidates:candidate_vec in
         let t = C.make ~matcher:(fun () -> matcher) ~candidates:(fun () -> !candidate_vec) in
         let t = C.select_previous t in
         let ret = ref [] in

@@ -80,7 +80,7 @@ let tests =
       `Quick,
       fun () ->
         let ret = ref [] in
-        let candidate = candidate ~id:1 ~text:"text" in
+        let _ = candidate ~id:1 ~text:"text" in
         let array = V.empty () in
         Seq.range ~stop:`exclusive 0 5 |> Seq.iter (fun v -> V.push ~value:(succ v) array);
         V.iteri ~f:(fun i v -> ret := (i, v) :: !ret) array;

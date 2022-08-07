@@ -1,4 +1,3 @@
-open CamomileLibraryDefault.Camomile
 open Oif_lib
 module VW = Virtual_window
 module Bindings = Zed_input.Make (LTerm_key)
@@ -156,11 +155,11 @@ class t () =
 
     self#bind
       (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (UChar.of_char 'n') })
+      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'n') })
       Next_candidate;
     self#bind
       (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (UChar.of_char 'p') })
+      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'p') })
       Prev_candidate;
     self#bind
       (let open LTerm_key in

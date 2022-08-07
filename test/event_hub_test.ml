@@ -40,7 +40,7 @@ let tests =
         let observer2 v = called := !called + 9 in
         let deleter = O.Event_hub.add_observer observer hub in
         O.Event_hub.add_observer observer2 hub |> ignore;
-        deleter ();
+        O.Event_hub.call_deleter deleter;
         let kind = O.Events.kind_of_key @@ key LTerm_key.Enter in
         O.Event_hub.dispatch kind hub;
         Alcotest.(check int) "called" 9 !called);

@@ -1,5 +1,3 @@
-open CamomileLibraryDefault.Camomile
-
 type filter =
   | Partial_match
   | Migemo
@@ -70,14 +68,14 @@ class t ~box ~read_line ~information_line ~event_hub ~available_filters:_ () =
     (* allocation initial size *)
     self#bind
       (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (UChar.of_char 'q') })
+      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'q') })
       Change_filter;
     self#bind
       (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (UChar.of_char 'c') })
+      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'c') })
       Quit;
     self#bind
       (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (UChar.of_char 'g') })
+      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'g') })
       Quit
   end

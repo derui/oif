@@ -5,7 +5,7 @@ type t
 
 type observer = Events.t -> unit
 
-type deleter = unit -> unit
+type deleter
 
 val make : (module Timestamp.Instance) -> t
 (** [make ()] get new instance of event hub for [event] type *)
@@ -16,3 +16,6 @@ val dispatch : Events.kind -> t -> unit
 val add_observer : observer -> t -> deleter
 (** [add_observer observer t] add [observer] to [t] instance. When stop observing via [observer], call deleter that is
     returned from this function *)
+
+val call_deleter: deleter -> unit
+                               (** [call_deleter deleter] calls given deleter *)

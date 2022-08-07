@@ -133,7 +133,7 @@ let () =
           (fun path ->
             let observer, finalizer = Event_recorder.init path in
             add_finalizer finalizer;
-            hub |> Event_hub.add_observer observer |> ignore)
+            Event_hub.add_observer observer hub |> ignore)
           option.Cli_option.record_event_path;
 
         Option.iter
