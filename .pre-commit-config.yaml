@@ -1,0 +1,10 @@
+---
+repos:
+- repo: local
+  hooks:
+    - id: ocamlformat
+      name: ocamlformat
+      entry: ocamlformat
+      language: system
+      files: "\\.mli?$"
+      args: ["-i"]
