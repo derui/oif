@@ -13,9 +13,7 @@ let tests =
         v
     end in
     let module TR = Timestamp.Make (Time) in
-    let module TR = Timestamp.Make (Time) in
-    let module I = (val TR.make ()) in
-    (module I : Timestamp.Instance)
+    (module (val TR.make ()) : Timestamp.Instance)
   in
   let key code = { LTerm_key.code; control = false; shift = false; meta = false } in
 

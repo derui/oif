@@ -1,7 +1,4 @@
 margin = 120
-align-cases =true
-align-constructors-decl = true
-align-variants-decl = true
 break-cases = fit
 module-item-spacing = sparse
 field-space = loose
