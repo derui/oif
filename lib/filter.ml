@@ -19,13 +19,10 @@ let split_query query =
       (fun accum _ c ->
         let c = match c with `Malformed _ -> Uutf.u_rep | `Uchar c -> c in
         if c = uchar_space then
-          if Buffer.length accum.characters > 0 then
-            {
-              characters =
-                (Buffer.clear accum.characters;
-                 accum.characters);
-              queries = Buffer.contents accum.characters :: accum.queries;
-            }
+          if Buffer.length accum.characters > 0 then (
+            let characters = Buffer.contents accum.characters in
+            Buffer.clear accum.characters;
+            { characters = accum.characters; queries = characters :: accum.queries })
           else accum
         else (
           Uutf.Buffer.add_utf_8 accum.characters c;
@@ -41,7 +38,7 @@ let split_query query =
 let apply_matched queries candidate =
   match queries with
   | [] -> Match_result.no_query ()
-  | _  ->
+  | _ ->
       let queries = List.map ~f:(fun v -> ReIntf.regexp v |> Re.compile) queries in
       let candidate = candidate.Candidate.text in
       let matched =

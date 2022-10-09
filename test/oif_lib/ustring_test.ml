@@ -36,7 +36,9 @@ let tests =
     ( "get first index for Unicode",
       `Quick,
       fun () ->
-        let data = [ ("あ", "おいあえう", 2); ("いあ", "おいあえう", 1); ("おいあえう", "おいあえう", 0) ] in
+        let data =
+          [ ("あ", "おいあえう", 2); ("いあ", "おいあえう", 1); ("おいあえう", "おいあえう", 0); ("bl", "github.com/derui/blog", 17) ]
+        in
         List.iter
           (fun (part, src, expected) ->
             let actual = U.index ~src ~part in

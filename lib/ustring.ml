@@ -12,16 +12,16 @@ let index ~src ~part =
   if src_len < part_len then not_found
   else if part_len = 0 then not_found
   else
-    let rec find src part index matched =
+    let origin_part = part in
+    let rec find src part index matched_index =
       match (src, part) with
-      | _, []              -> if matched then index else not_found
-      | [], _              -> not_found
+      | _, [] -> if matched_index <> -1 then matched_index else not_found
+      | [], _ -> not_found
       | v1 :: r1, v2 :: r2 ->
-          if Uchar.equal v1 v2 then find r1 r2 index true
-          else if not matched then find r1 part (succ index) false
-          else not_found
+          if Uchar.equal v1 v2 then find r1 r2 (succ index) (if matched_index <> -1 then matched_index else index)
+          else find r1 origin_part (succ index) (-1)
     in
-    find src part 0 false
+    find src part 0 (-1)
 
 let length s =
   Uutf.String.fold_utf_8 (fun accum _ c -> match c with `Malformed _ -> accum | `Uchar _ -> succ accum) 0 s
