@@ -110,8 +110,8 @@ class t () =
       let matched_indices = Matcher.matched_indices matcher in
       let candidate_size = matched_indices |> Array.length in
       match action with
-      | Next_candidate    -> set_selector @@ S.select_next ~indices:matched_indices @@ React.S.value selector
-      | Prev_candidate    -> set_selector @@ S.select_previous @@ React.S.value selector
+      | Next_candidate -> set_selector @@ S.select_next ~indices:matched_indices @@ React.S.value selector
+      | Prev_candidate -> set_selector @@ S.select_previous @@ React.S.value selector
       | Confirm_candidate ->
           let selector = React.S.value selector in
           let marked_indices = S.marked_indices selector in
@@ -120,10 +120,10 @@ class t () =
             | [] ->
                 let selected_index = S.current_selected_index selector in
                 if selected_index >= candidate_size then [||] else [| Array.unsafe_get matched_indices selected_index |]
-            | _  -> List.to_seq marked_indices |> Stdlib.Array.of_seq
+            | _ -> List.to_seq marked_indices |> Stdlib.Array.of_seq
           in
           set_current_candidates marked_indices
-      | Toggle_mark       ->
+      | Toggle_mark ->
           let selector = React.S.value selector in
           let selected_index = S.current_selected_index selector in
           let start_index = VW.calculate_window _virtual_window |> VW.Window.start_index in
@@ -137,17 +137,26 @@ class t () =
           let resolver = Bindings.resolver [ Bindings.pack (fun x -> x) bindings ] in
           (match Bindings.resolve key resolver with Bindings.Accepted action -> self#exec action | _ -> ());
           true
-      | _                   -> false
+      | _ -> false
 
     val mutable _selection_update_event = React.E.never
 
     initializer
+    let module Limiter = Lwt_throttle.Make (struct
+      type t = string
+
+      let equal = Stdlib.( = )
+
+      let hash _ = 1
+    end) in
+    let limiter = Limiter.create ~max:1 ~n:1 ~rate:60 in
+    let e = Lwt_react.E.map_s (fun _ -> Limiter.wait limiter "change") (React.S.changes candidates) in
     (* keep event reference *)
     _selection_update_event <-
       React.E.select
         [
           React.E.stamp (React.S.changes selector) ignore;
-          React.E.stamp (React.S.changes candidates) ignore;
+          React.E.stamp e ignore;
           React.E.stamp (React.S.changes matcher) ignore;
         ]
       |> React.E.map (fun _ -> self#queue_draw);
