@@ -6,4 +6,4 @@ module type Migemo_arg = sig
 end
 
 (** {!Migemo} provides to filter matched user input partially. *)
-module Make (Migemo_arg : Migemo_arg) : S
+module Make : functor (_ : Migemo_arg) -> S

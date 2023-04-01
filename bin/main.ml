@@ -3,7 +3,7 @@ open Std
 open Oif
 
 type exit_status =
-  | Confirm              of string list
+  | Confirm of string list
   | Confirmed_with_empty
   | Quit
 
@@ -29,7 +29,7 @@ let get_tty_name () =
   let* stderr_stat = try Unix.fstat Unix.stderr |> Option.some with _ -> None in
 
   let rec loop = function
-    | []             -> None
+    | [] -> None
     | prefix :: rest -> (
         let files = Sys.readdir prefix in
         let ret =
@@ -51,7 +51,7 @@ let create_window () =
       let in_chan = Lwt_io.of_fd ~mode:Lwt_io.input tty_fd in
       let out_chan = Lwt_io.of_fd ~mode:Lwt_io.output tty_fd in
       LTerm.create tty_fd in_chan tty_fd out_chan
-  | None     -> LTerm.stdout |> Lazy.force
+  | None -> LTerm.stdout |> Lazy.force
 
 (* event handlers *)
 
@@ -68,7 +68,7 @@ let confirm_candidate_handler wakener candidate_state selected_indices =
   let _ =
     match selected_indices with
     | [||] -> Lwt.wakeup_later wakener Confirmed_with_empty
-    | _    ->
+    | _ ->
         let ret = ref [] in
         Array.iter (fun index -> ret := (Vector.unsafe_get candidates index |> Candidate.text) :: !ret) selected_indices;
         Lwt.wakeup_later wakener (Confirm !ret)
@@ -85,7 +85,7 @@ let quit_handler wakener = function false -> () | true -> Lwt.wakeup_later waken
 
 type finalizer = unit -> unit
 
-let finalizers = ref []
+let finalizers : finalizer list ref = ref []
 
 let add_finalizer finalizer = finalizers := finalizer :: !finalizers
 
@@ -151,7 +151,7 @@ let () =
                | [ candidate ] ->
                    App_state.push_line ~candidate app_state;
                    app_state.all_candidates |> box#set_candidates |> Lwt.return
-               | _             -> Lwt.return_unit)
+               | _ -> Lwt.return_unit)
         |> Lwt_react.E.keep;
 
         (* define event and handler *)
@@ -186,9 +186,9 @@ let () =
         Lwt.return status
       in
       match Lwt_main.run monad with
-      | Quit                 -> exit 130
+      | Quit -> exit 130
       | Confirmed_with_empty -> exit 1
-      | Confirm v            ->
+      | Confirm v ->
           let delimiter = if option.print_nul then Char.chr 0 |> String.make 1 else "\n" in
           String.concat delimiter v |> Printf.printf "%s\n";
           exit 0)
