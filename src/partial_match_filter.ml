@@ -9,7 +9,7 @@ module Partial_match = struct
     let queries = Filter.split_query query |> List.filter ~f:(fun v -> String.length v > 0) in
     match queries with
     | [] -> Match_result.no_query ()
-    | _  ->
+    | _ ->
         let match_result =
           List.fold_left
             ~f:(fun accum query ->

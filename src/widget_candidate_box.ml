@@ -142,40 +142,40 @@ class t () =
     val mutable _selection_update_event = React.E.never
 
     initializer
-    let module Limiter = Lwt_throttle.Make (struct
-      type t = string
+      let module Limiter = Lwt_throttle.Make (struct
+        type t = string
 
-      let equal = Stdlib.( = )
+        let equal = Stdlib.( = )
 
-      let hash _ = 1
-    end) in
-    let limiter = Limiter.create ~max:1 ~n:1 ~rate:60 in
-    let e = Lwt_react.E.map_s (fun _ -> Limiter.wait limiter "change") (React.S.changes candidates) in
-    (* keep event reference *)
-    _selection_update_event <-
-      React.E.select
-        [
-          React.E.stamp (React.S.changes selector) ignore;
-          React.E.stamp e ignore;
-          React.E.stamp (React.S.changes matcher) ignore;
-        ]
-      |> React.E.map (fun _ -> self#queue_draw);
-    self#on_event self#handle_event;
+        let hash _ = 1
+      end) in
+      let limiter = Limiter.create ~max:1 ~n:1 ~rate:60 in
+      let e = Lwt_react.E.map_s (fun _ -> Limiter.wait limiter "change") (React.S.changes candidates) in
+      (* keep event reference *)
+      _selection_update_event <-
+        React.E.select
+          [
+            React.E.stamp (React.S.changes selector) ignore;
+            React.E.stamp e ignore;
+            React.E.stamp (React.S.changes matcher) ignore;
+          ]
+        |> React.E.map (fun _ -> self#queue_draw);
+      self#on_event self#handle_event;
 
-    self#bind
-      (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'n') })
-      Next_candidate;
-    self#bind
-      (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'p') })
-      Prev_candidate;
-    self#bind
-      (let open LTerm_key in
-      { control = false; meta = false; shift = false; code = Tab })
-      Toggle_mark;
-    self#bind
-      (let open LTerm_key in
-      { control = false; meta = false; shift = false; code = Enter })
-      Confirm_candidate
+      self#bind
+        (let open LTerm_key in
+         { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'n') })
+        Next_candidate;
+      self#bind
+        (let open LTerm_key in
+         { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'p') })
+        Prev_candidate;
+      self#bind
+        (let open LTerm_key in
+         { control = false; meta = false; shift = false; code = Tab })
+        Toggle_mark;
+      self#bind
+        (let open LTerm_key in
+         { control = false; meta = false; shift = false; code = Enter })
+        Confirm_candidate
   end

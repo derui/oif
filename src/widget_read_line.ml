@@ -27,7 +27,7 @@ class text_widget () =
     method! draw ctx _focused =
       super#draw ctx _focused;
       match super#cursor_position with
-      | None              -> ()
+      | None -> ()
       | Some { col; row } ->
           let ctx = LTerm_draw.sub ctx { LTerm_geom.row1 = row; row2 = row + 1; col1 = col; col2 = col + 1 } in
           LTerm_draw.fill_style ctx LTerm_style.{ none with reverse = Some true }
@@ -50,19 +50,19 @@ class t ?(prompt = "QUERY> ") ?(query = "") () =
     val mutable _text_event = React.E.never
 
     initializer
-    Zed_edit.insert text_widget#context @@ Zed_rope.of_string @@ Zed_string.of_utf8 query;
+      Zed_edit.insert text_widget#context @@ Zed_rope.of_string @@ Zed_string.of_utf8 query;
 
-    let signal = Zed_string.of_utf8 prompt |> LTerm_text.of_string in
-    self#set_prompt signal;
-    _text_event <-
-      React.E.select [ React.E.map ignore @@ Zed_edit.changes text_widget#engine ]
-      |> React.E.map (fun _ -> set_text @@ Zed_string.to_utf8 text_widget#text);
+      let signal = Zed_string.of_utf8 prompt |> LTerm_text.of_string in
+      self#set_prompt signal;
+      _text_event <-
+        React.E.select [ React.E.map ignore @@ Zed_edit.changes text_widget#engine ]
+        |> React.E.map (fun _ -> set_text @@ Zed_string.to_utf8 text_widget#text);
 
-    self#on_event (fun e ->
-        text_widget#send_event e;
-        true);
+      self#on_event (fun e ->
+          text_widget#send_event e;
+          true);
 
-    self#add ~expand:false (new label prompt ());
-    self#add text_widget;
-    text_widget#set_parent None
+      self#add ~expand:false (new label prompt ());
+      self#add text_widget;
+      text_widget#set_parent None
   end

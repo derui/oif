@@ -21,7 +21,8 @@ let tests =
     let unique_name = "test"
 
     let filter ~candidate ~query =
-      if C.id candidate mod 2 = 0 then Oif_lib.Match_result.make ~matched:[ (1, C.id candidate) ] else Oif_lib.Match_result.empty
+      if C.id candidate mod 2 = 0 then Oif_lib.Match_result.make ~matched:[ (1, C.id candidate) ]
+      else Oif_lib.Match_result.empty
   end in
   [
     ( "should be able to apply filter to candidates",

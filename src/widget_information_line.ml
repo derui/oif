@@ -23,12 +23,12 @@ class label_num_of_candidates () =
     val mutable _event_cache = React.E.never
 
     initializer
-    _event_cache <-
-      React.S.changes number_of_candidates
-      |> React.E.map (fun v ->
-             let s = self#make_string v in
-             set_size_request { LTerm_geom.rows = 1; cols = String.length s })
-      |> React.E.map (fun () -> self#queue_draw)
+      _event_cache <-
+        React.S.changes number_of_candidates
+        |> React.E.map (fun v ->
+               let s = self#make_string v in
+               set_size_request { LTerm_geom.rows = 1; cols = String.length s })
+        |> React.E.map (fun () -> self#queue_draw)
   end
 
 class label_filter_name () =
@@ -52,10 +52,10 @@ class label_filter_name () =
     val mutable _event_cache = React.E.never
 
     initializer
-    _event_cache <-
-      React.S.changes filter_name
-      |> React.E.map (fun s -> set_size_request { LTerm_geom.rows = 0; cols = String.length s })
-      |> React.E.map (fun () -> self#queue_draw)
+      _event_cache <-
+        React.S.changes filter_name
+        |> React.E.map (fun s -> set_size_request { LTerm_geom.rows = 0; cols = String.length s })
+        |> React.E.map (fun () -> self#queue_draw)
   end
 
 (** Implementation for the box to show candidate and navigate. *)
@@ -71,15 +71,15 @@ class t () =
     val mutable _selection_update_event = React.E.create () |> fst
 
     initializer
-    (* keep event reference *)
-    _selection_update_event <-
-      React.E.select
-        [
-          React.E.stamp (React.S.changes label_num#signal) ignore;
-          React.E.stamp (React.S.changes label_filter#signal) ignore;
-        ]
-      |> React.E.map (fun _ -> self#queue_draw);
+      (* keep event reference *)
+      _selection_update_event <-
+        React.E.select
+          [
+            React.E.stamp (React.S.changes label_num#signal) ignore;
+            React.E.stamp (React.S.changes label_filter#signal) ignore;
+          ]
+        |> React.E.map (fun _ -> self#queue_draw);
 
-    self#add ~expand:true label_num;
-    self#add ~expand:false label_filter
+      self#add ~expand:true label_num;
+      self#add ~expand:false label_filter
   end
