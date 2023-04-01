@@ -14,7 +14,7 @@ build: [
   ["dune" "runtest" "-p" name] {with-test}
 ]
 depends: [
-  "dune" { >= "2.0.0"}
+  "dune" { >= "3.0.0"}
   "lwt" { < "6.0.0"}
   "lwt_ppx"
   "lambda-term"

@@ -1,4 +1,4 @@
-open CamomileLibraryDefault.Camomile
+open Camomile
 
 type id = int [@@deriving show, eq]
 

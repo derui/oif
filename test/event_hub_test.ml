@@ -1,6 +1,6 @@
 open Oif_lib
 module O = Oif
-open CamomileLibraryDefault.Camomile
+open Camomile
 
 let tests =
   let make_timestamper_instance () =

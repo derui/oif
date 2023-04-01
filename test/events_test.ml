@@ -1,6 +1,6 @@
 open Oif_lib
 module O = Oif
-open CamomileLibraryDefault.Camomile
+open Camomile
 
 let tests =
   let get_key ?(control = false) ?(meta = false) ?(shift = false) code = { LTerm_key.code; shift; control; meta } in

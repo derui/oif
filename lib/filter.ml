@@ -1,7 +1,6 @@
 open Std
-open CamomileLibraryDefault.Camomile
-module DF = CamomileLibraryDefault
-module ReIntf = DF.Camomile.UReStr
+open Camomile
+module ReIntf = UReStr
 module Re = ReIntf.Make (UTF8)
 include Filter_intf
 
