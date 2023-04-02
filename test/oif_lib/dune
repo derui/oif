@@ -1,4 +1,5 @@
 (test
  (name oif_lib_tests)
  (flags (-safe-string))
- (libraries oif_lib alcotest))
+ (libraries oif_lib alcotest alcotest-lwt lwt)
+ (preprocess (pps ppx_deriving.show ppx_deriving.eq lwt_ppx)))

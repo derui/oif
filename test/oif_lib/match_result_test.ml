@@ -19,3 +19,4 @@ let tests =
         let ret = M.make ~matched:[ (1, 2) ] in
         Alcotest.(check bool) "length" true @@ M.is_matched ret );
   ]
+  |> List.map ~f:(fun (name, level, f) -> Alcotest_lwt.test_case_sync name level f)
