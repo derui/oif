@@ -29,18 +29,20 @@ type t = {
 
 let make ~matcher = { current_position = 0; marked_indices = Int_set.empty; matcher_resolver = matcher }
 
+let current_selected_index t = t.current_position
+
 let select_next t =
-  let%lwt indices = t.matcher_resolver () |> New_matcher.matched_results |> Lwt_seq.to_list in
+  let indices = t.matcher_resolver () |> New_matcher.matched_results |> List.of_seq in
   let size = List.length indices in
-  if size <= 0 then Lwt.return t
+  if size <= 0 then t
   else
     let next_selection = succ t.current_position in
     let allowed_index = pred size in
-    Lwt.return { t with current_position = min allowed_index next_selection }
+    { t with current_position = min allowed_index next_selection }
 
 let select_previous t =
   let next_position = pred t.current_position in
-  Lwt.return { t with current_position = max 0 next_position }
+  { t with current_position = max 0 next_position }
 
 let restrict_with_limit ~limit t = { t with current_position = max 0 @@ min t.current_position limit }
 
@@ -56,13 +58,16 @@ let is_marked ~id { marked_indices; _ } = Int_set.mem id marked_indices
 
 let iter_with_matching ~offset ~size ~f t =
   let matcher = t.matcher_resolver () in
-  let%lwt matched_results = New_matcher.matched_results matcher |> Lwt_seq.to_list in
+  let matched_results = New_matcher.matched_results matcher |> List.of_seq in
   let matched_results = Array.of_list matched_results in
-  if Array.length matched_results <= 0 then Lwt.return_unit
-  else (
+  if Array.length matched_results <= 0 then ()
+  else
     Array.sub matched_results offset size
     |> Array.iteri (fun index (candidate, match_result) ->
            let marked = is_marked ~id:index t in
 
-           f { candidate; marked; selected = t.current_position = index; match_result });
-    Lwt.return_unit)
+           f index { candidate; marked; selected = t.current_position = index; match_result })
+
+let selected_indices t =
+  if Int_set.is_empty t.marked_indices then [ current_selected_index t ]
+  else Int_set.to_seq t.marked_indices |> List.of_seq

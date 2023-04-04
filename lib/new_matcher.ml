@@ -52,9 +52,8 @@ let apply_filter ~filter ~query t =
 let all_match_results { match_results; candidates; _ } =
   assert (V.length match_results = V.length candidates);
 
-  match_results |> V.to_seq |> Seq.mapi (fun index result -> (V.unsafe_get candidates index, result)) |> Lwt_seq.of_seq
+  match_results |> V.to_seq |> Seq.mapi (fun index result -> (V.unsafe_get candidates index, result))
 
 let matched_results t =
   t.matched_indices |> V.to_seq
   |> Seq.map (fun index -> (V.unsafe_get t.candidates index, V.unsafe_get t.match_results index))
-  |> Lwt_seq.of_seq

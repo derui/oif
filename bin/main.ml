@@ -55,25 +55,26 @@ let create_window () =
 
 (* event handlers *)
 
-let selection_event_handler app_state box information_line query =
-  App_state.update_query query app_state;
-  let candidates = app_state.all_candidates in
+let selection_event_handler app_state information_line query =
+  App_state.update_query query app_state;%lwt
   let number = App_state.count_of_matches app_state in
   information_line#set_number_of_candidates number;
-  box#set_candidates candidates;
-  box#set_matcher app_state.matcher |> Lwt.return
-
-let confirm_candidate_handler wakener candidate_state selected_indices =
-  let%lwt candidates = Candidate_state.get_candidates candidate_state in
-  let _ =
-    match selected_indices with
-    | [||] -> Lwt.wakeup_later wakener Confirmed_with_empty
-    | _ ->
-        let ret = ref [] in
-        Array.iter (fun index -> ret := (Vector.unsafe_get candidates index |> Candidate.text) :: !ret) selected_indices;
-        Lwt.wakeup_later wakener (Confirm !ret)
-  in
   Lwt.return_unit
+
+let confirm_candidate_handler wakener candidate_state = function
+  | Widget_candidate_box.Confirmed selected_indices ->
+      let%lwt candidates = Candidate_state.get_candidates candidate_state in
+      let _ =
+        match selected_indices with
+        | [] -> Lwt.wakeup_later wakener Confirmed_with_empty
+        | _ ->
+            let ret = ref [] in
+            List.iter
+              ~f:(fun index -> ret := (Vector.unsafe_get candidates index |> Candidate.text) :: !ret)
+              selected_indices;
+            Lwt.wakeup_later wakener (Confirm !ret)
+      in
+      Lwt.return_unit
 
 let change_filter_handler ~before_change app_state information_line filter =
   let%lwt () = before_change app_state in
@@ -110,7 +111,7 @@ let () =
       let monad =
         let%lwt window = create_window () in
 
-        let box = new Widget_candidate_box.t () in
+        let box = new Widget_candidate_box.t (Index_coordinator.make ~matcher:(fun () -> app_state.matcher)) in
         let information_line = new Widget_information_line.t () in
         let read_line = new Widget_read_line.t ?query:option.query () in
         let module TR = Timestamp.Make (struct
@@ -127,7 +128,6 @@ let () =
             ~available_filters ~event_hub:hub ()
         in
         information_line#set_filter_name @@ App_state.name_of_filter Widget_main.Partial_match;
-        box#set_matcher app_state.matcher;
 
         Option.iter
           (fun path ->
@@ -147,23 +147,19 @@ let () =
                let number = App_state.count_of_matches app_state in
                information_line#set_number_of_candidates number;
 
-               match candidate with
-               | [ candidate ] ->
-                   App_state.push_line ~candidate app_state;
-                   app_state.all_candidates |> box#set_candidates |> Lwt.return
-               | _ -> Lwt.return_unit)
+               match candidate with [ candidate ] -> App_state.push_line ~candidate app_state | _ -> Lwt.return_unit)
         |> Lwt_react.E.keep;
 
         (* define event and handler *)
         React.S.changes read_line#text
-        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state box information_line text)
+        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state information_line text)
         |> Lwt_react.E.keep;
         React.S.changes term#switch_filter
         |> Lwt_react.E.map_s (change_filter_handler app_state information_line ~before_change)
         |> Lwt_react.E.keep;
         let waiter, wakener = Lwt.task () in
         React.S.changes term#quit |> React.E.map (quit_handler wakener) |> Lwt_react.E.keep;
-        React.S.changes box#current_candidates
+        React.E.once box#event
         |> Lwt_react.E.map_s (confirm_candidate_handler wakener candidate_state)
         |> Lwt_react.E.keep;
 

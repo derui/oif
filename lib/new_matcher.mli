@@ -9,8 +9,8 @@ val add_candidate : candidate:Candidate.t -> filter:(module Filter_intf.S) -> t 
 val apply_filter : filter:(module Filter_intf.S) -> query:string -> t -> unit Lwt.t
 (** [apply_filter ~filter ~query t] applies filter with [query]. This function has side effect in [t]. *)
 
-val all_match_results : t -> (Candidate.t * Match_result.t) Lwt_seq.t
+val all_match_results : t -> (Candidate.t * Match_result.t) Seq.t
 (** [all_match_results t] returns match result with candidate *)
 
-val matched_results : t -> (Candidate.t * Match_result.t) Lwt_seq.t
+val matched_results : t -> (Candidate.t * Match_result.t) Seq.t
 (** [matched_results t] returns only matched result on previous apply_filter or add_candidate *)
