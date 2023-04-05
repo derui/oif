@@ -21,9 +21,7 @@ let make ~current_filter ~available_filters =
 
 let update_available_filters t filters = t.available_filters <- filters
 
-let push_line ~candidate t =
-  let module F = (val t.current_filter) in
-  t.matcher |> New_matcher.add_candidate ~candidate ~filter:t.current_filter
+let push_line ~candidate t = t.matcher |> New_matcher.add_candidate ~candidate ~filter:t.current_filter
 
 let update_query query t =
   t.current_query <- (if String.length query > 0 then Some query else None);

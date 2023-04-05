@@ -97,5 +97,18 @@ let test6 =
       Alcotest.(check @@ list bool) "initial" [] !ret;
       Lwt.return_unit )
 
+let test7 =
+  ( "do not throw error if size and offset are greater than array size",
+    `Quick,
+    fun _ () ->
+      let matcher = Matcher.make () in
+      let t = C.make ~matcher:(fun () -> matcher) in
+      let t = C.select_previous t in
+      let ret = ref [] in
+      C.iter_with_matching ~f:(fun _ v -> ret := v.selected :: !ret) ~offset:0 ~size:1 t;
+      Alcotest.(check @@ list bool) "initial" [] !ret;
+      Lwt.return_unit )
+
 let tests =
-  [ test1; test2; test3; test4; test5; test6 ] |> List.map (fun (name, level, f) -> Alcotest_lwt.test_case name level f)
+  [ test1; test2; test3; test4; test5; test6; test7 ]
+  |> List.map (fun (name, level, f) -> Alcotest_lwt.test_case name level f)

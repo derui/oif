@@ -76,16 +76,14 @@ class t (_coodinator : Index_coordinator.t) =
     method! draw ctx _ =
       let coordinator = React.S.value coordinator in
       let w = VW.calculate_window _virtual_window in
-      let len = succ @@ VW.Window.(end_index w - start_index w) in
 
-      let size = ref 0 in
-      IC.iter_with_matching coordinator ~size:len
+      let view_port_height = view_port_size ctx in
+      IC.iter_with_matching coordinator ~size:view_port_height
         ~offset:VW.Window.(start_index w)
         ~f:(fun index matching ->
-          incr size;
           self#draw_candidate ctx index matching.selected matching.candidate ~marked:matching.selected
             ~result:matching.match_result);
-      self#update_virtual_window ctx !size coordinator
+      self#update_virtual_window ctx view_port_height coordinator
 
     method private exec action =
       match action with

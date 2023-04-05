@@ -58,11 +58,10 @@ let is_marked ~id { marked_indices; _ } = Int_set.mem id marked_indices
 
 let iter_with_matching ~offset ~size ~f t =
   let matcher = t.matcher_resolver () in
-  let matched_results = New_matcher.matched_results matcher |> List.of_seq in
-  let matched_results = Array.of_list matched_results in
+  let matched_results = New_matcher.matched_results matcher |> List.of_seq |> Array.of_list in
   if Array.length matched_results <= 0 then ()
   else
-    Array.sub matched_results offset size
+    Array.sub matched_results offset (min (Array.length matched_results - offset) size)
     |> Array.iteri (fun index (candidate, match_result) ->
            let marked = is_marked ~id:index t in
 
