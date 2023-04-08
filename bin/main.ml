@@ -55,10 +55,11 @@ let create_window () =
 
 (* event handlers *)
 
-let selection_event_handler app_state information_line query =
+let selection_event_handler app_state information_line query box =
   App_state.update_query query app_state;%lwt
   let number = App_state.count_of_matches app_state in
   information_line#set_number_of_candidates number;
+  box#notify_candidates_updated ();
   Lwt.return_unit
 
 let confirm_candidate_handler wakener candidate_state = function
@@ -152,7 +153,7 @@ let () =
 
         (* define event and handler *)
         React.S.changes read_line#text
-        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state information_line text)
+        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state information_line text box)
         |> Lwt_react.E.keep;
         React.S.changes term#switch_filter
         |> Lwt_react.E.map_s (change_filter_handler app_state information_line ~before_change)
