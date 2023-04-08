@@ -9,7 +9,7 @@ let candidate_t = Alcotest.testable Candidate.pp ( = )
 module F = struct
   let unique_name = "test"
 
-  let filter ~candidate:_ ~query:_ = Match_result.empty
+  let filter ~candidate:_ ~query:_ = Match_result.no_query ()
 end
 
 let to_candidates list = List.map (fun (id, text) -> Candidate.make ~id ~text) list
@@ -109,6 +109,36 @@ let test7 =
       Alcotest.(check @@ list bool) "initial" [] !ret;
       Lwt.return_unit )
 
+let test8 =
+  ( "recalculate current position",
+    `Quick,
+    fun _ () ->
+      let matcher = ref @@ Matcher.make () in
+      let t = C.make ~matcher:(fun () -> !matcher) in
+      let candidates = to_candidates [ (1, "text"); (2, "foo") ] in
+      candidates |> Lwt_list.iter_s (fun value -> Matcher.add_candidate ~candidate:value ~filter:(module F) !matcher);%lwt
+      let t = C.select_next t in
+      matcher := Matcher.make ();
+      let t = C.recalculate_index t in
+      Alcotest.(check @@ int) "index" 0 (C.current_selected_index t);
+      Lwt.return_unit )
+
+let test9 =
+  ( "recalculate current position with some matching",
+    `Quick,
+    fun _ () ->
+      let matcher = ref @@ Matcher.make () in
+      let t = C.make ~matcher:(fun () -> !matcher) in
+      let candidates = to_candidates [ (1, "text"); (2, "foo"); (3, "bar") ] in
+      candidates |> Lwt_list.iter_s (fun value -> Matcher.add_candidate ~candidate:value ~filter:(module F) !matcher);%lwt
+      let t = C.select_next t |> C.select_next in
+      matcher := Matcher.make ();
+      let candidates = to_candidates [ (1, "text"); (2, "foo") ] in
+      candidates |> Lwt_list.iter_s (fun value -> Matcher.add_candidate ~candidate:value ~filter:(module F) !matcher);%lwt
+      let t = C.recalculate_index t in
+      Alcotest.(check @@ int) "index" 1 (C.current_selected_index t);
+      Lwt.return_unit )
+
 let tests =
-  [ test1; test2; test3; test4; test5; test6; test7 ]
+  [ test1; test2; test3; test4; test5; test6; test7; test8; test9 ]
   |> List.map (fun (name, level, f) -> Alcotest_lwt.test_case name level f)

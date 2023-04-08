@@ -94,7 +94,7 @@ class t (_coodinator : Index_coordinator.t) =
           set_event (Confirmed v)
       | Toggle_mark ->
           let coordinator = React.S.value coordinator in
-          set_coordinator @@ IC.toggle_mark ~id:IC.(current_selected_index coordinator) coordinator
+          set_coordinator @@ IC.toggle_mark_at_current_index coordinator
 
     method private handle_event event =
       match event with

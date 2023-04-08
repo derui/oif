@@ -43,4 +43,4 @@ let current_filter_name t =
       let module F = (val t.current_filter : Filter.S) in
       F.unique_name |> Lwt.return)
 
-let count_of_matches { matcher; _ } = New_matcher.matched_results matcher |> Seq.length
+let count_of_matches { matcher; _ } = New_matcher.matched_results matcher |> Array.length

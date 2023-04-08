@@ -2,15 +2,15 @@ open Oif_lib
 
 type t
 
-type candidate_id = Candidate.id
+and candidate_id = Candidate.id
 
-type index = int
+and index = int
 
-type size = int
+and size = int
 
-type matcher_resolver = unit -> New_matcher.t
+and matcher_resolver = unit -> New_matcher.t
 
-type matching = {
+and matching = {
   candidate : Candidate.t;
   selected : bool;
   marked : bool;
@@ -26,8 +26,8 @@ val select_next : t -> t
 val select_previous : t -> t
 (** [select_previous t] move selection into previous position if allowed *)
 
-val current_selected_index : t -> index
-(** [current_selected_index t] get current index that is selected *)
+val recalculate_index : t -> t
+(** [recalculate_index t] get new [t] that is recalculated index by matcher *)
 
 val restrict_with_limit : limit:size -> t -> t
 (** [restrict_with_limit ~limit t] get new [t] with limit *)
@@ -35,8 +35,11 @@ val restrict_with_limit : limit:size -> t -> t
 val iter_with_matching : offset:int -> size:size -> f:(index -> matching -> unit) -> t -> unit
 (** [iter_with_matching ~offset ~size ~f t] iterate matching result with [f] *)
 
-val toggle_mark : id:candidate_id -> t -> t
-(** [toggle_mark id t] toggle mark for [candidate] in [t] *)
+val toggle_mark_at_current_index : t -> t
+(** [toggle_mark_at_current_index t] toggle mark for [candidate] in [t] *)
 
 val selected_indices : t -> index list
 (** [selected_indices t] get indices current marked or selected. *)
+
+val current_selected_index : t -> index
+(** [current_selected_index t] returns an index that user selected *)
