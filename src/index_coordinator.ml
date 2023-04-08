@@ -29,7 +29,14 @@ type t = {
 
 let make ~matcher = { current_position = 0; marked_indices = Int_set.empty; matcher_resolver = matcher }
 
+let recalculate_index t =
+  let matcher = t.matcher_resolver () in
+  let matched_result_size = Array.length @@ New_matcher.matched_results matcher in
+
+  { t with current_position = max 0 @@ min t.current_position (matched_result_size - 1) }
+
 let select_next t =
+  let t = recalculate_index t in
   let size = t.matcher_resolver () |> New_matcher.matched_results |> Array.length in
   if size <= 0 then t
   else
@@ -38,18 +45,14 @@ let select_next t =
     { t with current_position = min allowed_index next_selection }
 
 let select_previous t =
+  let t = recalculate_index t in
   let next_position = pred t.current_position in
   { t with current_position = max 0 next_position }
 
 let restrict_with_limit ~limit t = { t with current_position = max 0 @@ min t.current_position limit }
 
-let recalculate_index t =
-  let matcher = t.matcher_resolver () in
-  let matched_result_size = Array.length @@ New_matcher.matched_results matcher in
-
-  { t with current_position = max 0 @@ min t.current_position (matched_result_size - 1) }
-
 let toggle_mark_at_current_index t =
+  let t = recalculate_index t in
   let marked_indices = t.marked_indices and idx = t.current_position in
   {
     t with

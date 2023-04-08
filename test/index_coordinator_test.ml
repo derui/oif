@@ -119,7 +119,7 @@ let test8 =
       candidates |> Lwt_list.iter_s (fun value -> Matcher.add_candidate ~candidate:value ~filter:(module F) !matcher);%lwt
       let t = C.select_next t in
       matcher := Matcher.make ();
-      let t = C.recalculate_index t in
+      let t = C.select_next t in
       Alcotest.(check @@ int) "index" 0 (C.current_selected_index t);
       Lwt.return_unit )
 
@@ -135,7 +135,7 @@ let test9 =
       matcher := Matcher.make ();
       let candidates = to_candidates [ (1, "text"); (2, "foo") ] in
       candidates |> Lwt_list.iter_s (fun value -> Matcher.add_candidate ~candidate:value ~filter:(module F) !matcher);%lwt
-      let t = C.recalculate_index t in
+      let t = C.select_next t in
       Alcotest.(check @@ int) "index" 1 (C.current_selected_index t);
       Lwt.return_unit )
 
