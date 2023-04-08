@@ -12,6 +12,9 @@ class t :
   -> object
        inherit LTerm_widget.t
 
+       method notify_candidates_updated : unit -> unit
+       (** [notify_candidate_updated ()] is called by user of this widget to notify candidates updated *)
+
        method event : event React.E.t
        (** [event] get signal for event *)
 

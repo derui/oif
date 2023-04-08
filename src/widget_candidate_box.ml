@@ -39,6 +39,8 @@ class t (_coodinator : Index_coordinator.t) =
 
     method event = event'
 
+    method notify_candidates_updated () = set_coordinator @@ IC.recalculate_index @@ React.S.value coordinator
+
     method bind key action = bindings <- Bindings.add [ key ] action bindings
 
     method private draw_candidate ctx l selected candidate ~marked ~result =
@@ -117,9 +119,7 @@ class t (_coodinator : Index_coordinator.t) =
       let limiter = Limiter.create ~max:1 ~n:1 ~rate:60 in
       let e = Lwt_react.E.map_s (fun _ -> Limiter.wait limiter "change") (React.S.changes coordinator) in
       (* keep event reference *)
-      _selection_update_event <-
-        React.E.select [ React.E.stamp (React.S.changes coordinator) ignore; React.E.stamp e ignore ]
-        |> React.E.map (fun _ -> self#queue_draw);
+      _selection_update_event <- React.E.select [ React.E.stamp e ignore ] |> React.E.map (fun _ -> self#queue_draw);
       self#on_event self#handle_event;
 
       self#bind
