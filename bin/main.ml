@@ -64,15 +64,13 @@ let selection_event_handler app_state information_line query box =
 
 let confirm_candidate_handler wakener candidate_state = function
   | Widget_candidate_box.Confirmed selected_indices ->
-      let%lwt candidates = Candidate_state.get_candidates candidate_state in
+      let candidates = App_state.matched_results candidate_state in
       let _ =
         match selected_indices with
         | [] -> Lwt.wakeup_later wakener Confirmed_with_empty
         | _ ->
             let ret = ref [] in
-            List.iter
-              ~f:(fun index -> ret := (Vector.unsafe_get candidates index |> Candidate.text) :: !ret)
-              selected_indices;
+            List.iter ~f:(fun index -> ret := (candidates.(index) |> fst |> Candidate.text) :: !ret) selected_indices;
             Lwt.wakeup_later wakener (Confirm !ret)
       in
       Lwt.return_unit
@@ -160,9 +158,7 @@ let () =
         |> Lwt_react.E.keep;
         let waiter, wakener = Lwt.task () in
         React.S.changes term#quit |> React.E.map (quit_handler wakener) |> Lwt_react.E.keep;
-        React.E.once box#event
-        |> Lwt_react.E.map_s (confirm_candidate_handler wakener candidate_state)
-        |> Lwt_react.E.keep;
+        React.E.once box#event |> Lwt_react.E.map_s (confirm_candidate_handler wakener app_state) |> Lwt_react.E.keep;
 
         (* running asynchronous data reading *)
         let read_async, close_read_async = Async_line_reader.read_async Lwt_unix.stdin async_reader in

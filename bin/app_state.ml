@@ -44,3 +44,5 @@ let current_filter_name t =
       F.unique_name |> Lwt.return)
 
 let count_of_matches { matcher; _ } = New_matcher.matched_results matcher |> Array.length
+
+let matched_results { matcher; _ } = New_matcher.matched_results matcher
