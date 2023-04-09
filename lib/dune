@@ -2,4 +2,4 @@
  (name oif_lib)
  (flags (:standard -safe-string))
  (libraries camomile re uutf lwt)
- (preprocess (pps ppx_deriving.show ppx_deriving.eq)))
+ (preprocess (pps ppx_deriving.show ppx_deriving.eq lwt_ppx)))

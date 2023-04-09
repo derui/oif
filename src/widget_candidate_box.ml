@@ -2,7 +2,7 @@ open Oif_lib
 module VW = Virtual_window
 module Bindings = Zed_input.Make (LTerm_key)
 module Array = Vector
-module S = Candidate_selector
+module IC = Index_coordinator
 
 let selection_prefix = "->"
 
@@ -16,14 +16,14 @@ type action =
   | Toggle_mark
   | Confirm_candidate
 
+type event = Confirmed of int list
+
+let always_neq _ _ = false
+
 (** Implementation for the box to show candidate and navigate. *)
-class t () =
-  let selector, set_selector = React.S.create ~eq:(fun _ _ -> false) @@ Candidate_selector.make () in
-  let candidates, set_candidates = React.S.create ~eq:(fun _ _ -> false) @@ ref @@ Vector.empty () in
-  let matcher, set_matcher =
-    React.S.create ~eq:(fun _ _ -> false) @@ Matcher.make ~candidates:(ref @@ Vector.empty ())
-  in
-  let current_candidates, set_current_candidates = React.S.create ~eq:(fun _ _ -> false) [||] in
+class t (_coodinator : Index_coordinator.t) =
+  let coordinator, set_coordinator = React.S.create ~eq:always_neq @@ _coodinator in
+  let event', set_event = React.E.create () in
 
   let view_port_size ctx =
     let size = LTerm_draw.size ctx in
@@ -35,16 +35,11 @@ class t () =
 
     val mutable _virtual_window = VW.create ()
 
-    method set_candidates candidates' =
-      set_candidates candidates';
-      let new_candidate_size = Array.length !candidates' in
-      React.S.value selector |> S.restrict_with_limit ~limit:new_candidate_size |> set_selector
-
-    method set_matcher v = set_matcher v
-
-    method current_candidates = current_candidates
-
     val mutable bindings : action Bindings.t = Bindings.empty
+
+    method event = event'
+
+    method notify_candidates_updated () = set_coordinator @@ IC.recalculate_index @@ React.S.value coordinator
 
     method bind key action = bindings <- Bindings.add [ key ] action bindings
 
@@ -72,64 +67,36 @@ class t () =
       Zed_string.of_utf8 selection_prefix
       |> LTerm_draw.draw_string ctx 0 0 ~style:{ LTerm_style.none with foreground = Some LTerm_style.lred }
 
-    method private render ctx candidates selector matcher =
-      let selection = S.current_selected_index selector in
-      let match_results = Matcher.match_results matcher and matched_indices = Matcher.matched_indices matcher in
+    method private update_virtual_window ctx total_size coordinator =
+      let selection = IC.current_selected_index coordinator in
       let view_port_height = view_port_size ctx in
       _virtual_window <-
-        VW.update_total_rows (Array.length matched_indices) _virtual_window
+        VW.update_total_rows total_size _virtual_window
         |> VW.update_view_port_size view_port_height
-        |> VW.update_focused_row selection;
-
-      let w = VW.calculate_window _virtual_window in
-      let len = succ @@ VW.Window.(end_index w - start_index w) in
-      if Array.length matched_indices <= 0 then ()
-      else
-        let start_index = VW.Window.(start_index w) in
-        Array.sub matched_indices start_index len
-        |> Array.iteri ~f:(fun index matched_index ->
-               let candidate = Array.unsafe_get candidates matched_index
-               and match_result =
-                 if Array.length match_results < Array.length matched_indices then Match_result.empty
-                 else Array.unsafe_get match_results matched_index
-               in
-               let marked = S.is_marked ~id:matched_index selector in
-               self#draw_candidate ctx index (index = selection) candidate ~marked ~result:match_result);
-
-        let selection = selection - start_index in
-        if Array.length matched_indices > 0 then self#draw_selection ctx selection else ()
+        |> VW.update_focused_row selection
 
     method! draw ctx _ =
-      let candidates = React.S.value candidates in
-      let matcher = React.S.value matcher in
-      let selector = React.S.value selector in
-      self#render ctx !candidates selector matcher
+      let coordinator = React.S.value coordinator in
+      let w = VW.calculate_window _virtual_window in
+
+      let view_port_height = view_port_size ctx in
+      IC.iter_with_matching coordinator ~size:view_port_height
+        ~offset:VW.Window.(start_index w)
+        ~f:(fun index matching ->
+          self#draw_candidate ctx index matching.selected matching.candidate ~marked:matching.selected
+            ~result:matching.match_result);
+      self#update_virtual_window ctx view_port_height coordinator
 
     method private exec action =
-      let matcher = React.S.value matcher in
-      let matched_indices = Matcher.matched_indices matcher in
-      let candidate_size = matched_indices |> Array.length in
       match action with
-      | Next_candidate -> set_selector @@ S.select_next ~indices:matched_indices @@ React.S.value selector
-      | Prev_candidate -> set_selector @@ S.select_previous @@ React.S.value selector
+      | Next_candidate -> set_coordinator @@ IC.select_next @@ React.S.value coordinator
+      | Prev_candidate -> set_coordinator @@ IC.select_previous @@ React.S.value coordinator
       | Confirm_candidate ->
-          let selector = React.S.value selector in
-          let marked_indices = S.marked_indices selector in
-          let marked_indices =
-            match marked_indices with
-            | [] ->
-                let selected_index = S.current_selected_index selector in
-                if selected_index >= candidate_size then [||] else [| Array.unsafe_get matched_indices selected_index |]
-            | _ -> List.to_seq marked_indices |> Stdlib.Array.of_seq
-          in
-          set_current_candidates marked_indices
+          let v = IC.selected_indices @@ React.S.value coordinator in
+          set_event (Confirmed v)
       | Toggle_mark ->
-          let selector = React.S.value selector in
-          let selected_index = S.current_selected_index selector in
-          let start_index = VW.calculate_window _virtual_window |> VW.Window.start_index in
-          let candidate_index = start_index + selected_index in
-          let candidate_index = Array.unsafe_get matched_indices candidate_index in
-          if candidate_size > candidate_index then set_selector (S.toggle_mark ~id:candidate_index selector) else ()
+          let coordinator = React.S.value coordinator in
+          set_coordinator @@ IC.toggle_mark_at_current_index coordinator
 
     method private handle_event event =
       match event with
@@ -142,40 +109,33 @@ class t () =
     val mutable _selection_update_event = React.E.never
 
     initializer
-    let module Limiter = Lwt_throttle.Make (struct
-      type t = string
+      let module Limiter = Lwt_throttle.Make (struct
+        type t = string
 
-      let equal = Stdlib.( = )
+        let equal = Stdlib.( = )
 
-      let hash _ = 1
-    end) in
-    let limiter = Limiter.create ~max:1 ~n:1 ~rate:60 in
-    let e = Lwt_react.E.map_s (fun _ -> Limiter.wait limiter "change") (React.S.changes candidates) in
-    (* keep event reference *)
-    _selection_update_event <-
-      React.E.select
-        [
-          React.E.stamp (React.S.changes selector) ignore;
-          React.E.stamp e ignore;
-          React.E.stamp (React.S.changes matcher) ignore;
-        ]
-      |> React.E.map (fun _ -> self#queue_draw);
-    self#on_event self#handle_event;
+        let hash _ = 1
+      end) in
+      let limiter = Limiter.create ~max:1 ~n:1 ~rate:60 in
+      let e = Lwt_react.E.map_s (fun _ -> Limiter.wait limiter "change") (React.S.changes coordinator) in
+      (* keep event reference *)
+      _selection_update_event <- React.E.select [ React.E.stamp e ignore ] |> React.E.map (fun _ -> self#queue_draw);
+      self#on_event self#handle_event;
 
-    self#bind
-      (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'n') })
-      Next_candidate;
-    self#bind
-      (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'p') })
-      Prev_candidate;
-    self#bind
-      (let open LTerm_key in
-      { control = false; meta = false; shift = false; code = Tab })
-      Toggle_mark;
-    self#bind
-      (let open LTerm_key in
-      { control = false; meta = false; shift = false; code = Enter })
-      Confirm_candidate
+      self#bind
+        (let open LTerm_key in
+         { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'n') })
+        Next_candidate;
+      self#bind
+        (let open LTerm_key in
+         { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'p') })
+        Prev_candidate;
+      self#bind
+        (let open LTerm_key in
+         { control = false; meta = false; shift = false; code = Tab })
+        Toggle_mark;
+      self#bind
+        (let open LTerm_key in
+         { control = false; meta = false; shift = false; code = Enter })
+        Confirm_candidate
   end

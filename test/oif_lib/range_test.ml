@@ -16,3 +16,4 @@ let tests =
         let ranges = [ (1, 3); (2, 5); (0, 0) ] in
         Alcotest.(check @@ list @@ pair int int) "merged" [ (0, 0); (1, 5) ] @@ R.merge ranges );
   ]
+  |> List.map (fun (name, level, f) -> Alcotest_lwt.test_case_sync name level f)

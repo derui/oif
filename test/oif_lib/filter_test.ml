@@ -28,3 +28,4 @@ let tests =
         let ret = F.split_query "query1    query2  query3" in
         Alcotest.(check @@ list string) "queries" [ "query1"; "query2"; "query3" ] ret );
   ]
+  |> List.map (fun (name, level, f) -> Alcotest_lwt.test_case_sync name level f)

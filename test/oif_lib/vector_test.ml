@@ -87,3 +87,4 @@ let tests =
         Alcotest.(check int) "length" 5 @@ List.length !ret;
         Alcotest.(check @@ list @@ pair int int) "text" [ (4, 5); (3, 4); (2, 3); (1, 2); (0, 1) ] !ret );
   ]
+  |> List.map ~f:(fun (name, level, f) -> Alcotest_lwt.test_case_sync name level f)

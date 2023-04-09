@@ -9,9 +9,9 @@ type action =
 module Bindings = Zed_input.Make (LTerm_key)
 
 (** Implementation for main widget. *)
-class t ~box ~read_line ~information_line ~event_hub ~available_filters:_ () =
+class t ~box ~read_line ~information_line ~event_hub () =
   let switch_filter, set_switcn_filter = React.S.create Partial_match in
-  let quit, set_quit = React.S.create false in
+  let quit, set_quit = React.E.create () in
 
   let get_filter_to_switch = function Partial_match -> Migemo | Migemo -> Partial_match in
   object (self)
@@ -32,7 +32,7 @@ class t ~box ~read_line ~information_line ~event_hub ~available_filters:_ () =
       | Change_filter ->
           let current_filter = React.S.value switch_filter in
           get_filter_to_switch current_filter |> set_switcn_filter
-      | Quit          -> set_quit true
+      | Quit -> set_quit true
 
     method private handle_event event =
       match event with
@@ -42,40 +42,40 @@ class t ~box ~read_line ~information_line ~event_hub ~available_filters:_ () =
           | Bindings.Accepted action ->
               self#exec action;
               true
-          | _                        -> false)
-      | _                   -> false
+          | _ -> false)
+      | _ -> false
 
     initializer
-    let observer e =
-      let e = Events.to_lterm_event e in
-      if self#handle_event e then ()
-      else (
-        read_line#send_event e;
-        box#send_event e)
-    in
-    Event_hub.add_observer observer event_hub |> ignore;
+      let observer e =
+        let e = Events.to_lterm_event e in
+        if self#handle_event e then ()
+        else (
+          read_line#send_event e;
+          box#send_event e)
+      in
+      Event_hub.add_observer observer event_hub |> ignore;
 
-    self#on_event (fun e ->
-        let event = Events.kind_of_lterm_event e in
-        Option.iter (fun e -> Event_hub.dispatch e event_hub) event;
-        true);
+      self#on_event (fun e ->
+          let event = Events.kind_of_lterm_event e in
+          Option.iter (fun e -> Event_hub.dispatch e event_hub) event;
+          true);
 
-    self#add ~expand:false (new LTerm_widget.hline);
-    self#add ~expand:false read_line;
-    self#add ~expand:false information_line;
-    self#add ~expand:false box;
+      self#add ~expand:false (new LTerm_widget.hline);
+      self#add ~expand:false read_line;
+      self#add ~expand:false information_line;
+      self#add ~expand:false box;
 
-    (* allocation initial size *)
-    self#bind
-      (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'q') })
-      Change_filter;
-    self#bind
-      (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'c') })
-      Quit;
-    self#bind
-      (let open LTerm_key in
-      { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'g') })
-      Quit
+      (* allocation initial size *)
+      self#bind
+        (let open LTerm_key in
+         { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'q') })
+        Change_filter;
+      self#bind
+        (let open LTerm_key in
+         { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'c') })
+        Quit;
+      self#bind
+        (let open LTerm_key in
+         { control = true; meta = false; shift = false; code = Char (Uchar.of_char 'g') })
+        Quit
   end

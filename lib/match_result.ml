@@ -1,17 +1,16 @@
 type matched = int * int [@@deriving show, eq]
 
-type t = {
-  is_matched : bool;
-  matched : matched list;
-}
+type t =
+  | Empty
+  | Matched of { matched : matched list }
 [@@deriving show, eq]
 
-let empty = { is_matched = false; matched = [] }
+let empty = Empty
 
-let make ~matched = { matched; is_matched = (match matched with [] -> false | _ -> true) }
+let make ~matched = if List.length matched = 0 then Empty else Matched { matched }
 
-let no_query () = { matched = []; is_matched = true }
+let no_query () = Matched { matched = [] }
 
-let matched { matched; _ } = matched
+let matched = function Empty -> [] | Matched { matched } -> matched
 
-let is_matched { is_matched; _ } = is_matched
+let is_matched = function Empty -> false | Matched _ -> true

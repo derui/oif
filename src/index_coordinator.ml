@@ -2,15 +2,13 @@ open Oif_lib
 
 type index = int
 
-type size = int
+and size = int
 
-type candidate_id = Candidate.id
+and candidate_id = Candidate.id
 
-type matcher_resolver = unit -> Matcher.t
+and matcher_resolver = unit -> New_matcher.t
 
-type candidates_resolver = unit -> Candidate.t Vector.t
-
-type matching = {
+and matching = {
   candidate : Candidate.t;
   selected : bool;
   marked : bool;
@@ -27,15 +25,19 @@ type t = {
   current_position : index;
   marked_indices : Int_set.t;
   matcher_resolver : matcher_resolver;
-  candidates_resolver : candidates_resolver;
 }
 
-let make ~matcher ~candidates =
-  { current_position = 0; marked_indices = Int_set.empty; matcher_resolver = matcher; candidates_resolver = candidates }
+let make ~matcher = { current_position = 0; marked_indices = Int_set.empty; matcher_resolver = matcher }
+
+let recalculate_index t =
+  let matcher = t.matcher_resolver () in
+  let matched_result_size = Array.length @@ New_matcher.matched_results matcher in
+
+  { t with current_position = max 0 @@ min t.current_position (matched_result_size - 1) }
 
 let select_next t =
-  let indices = t.matcher_resolver () |> Matcher.matched_indices in
-  let size = Vector.length indices in
+  let t = recalculate_index t in
+  let size = t.matcher_resolver () |> New_matcher.matched_results |> Array.length in
   if size <= 0 then t
   else
     let next_selection = succ t.current_position in
@@ -43,34 +45,35 @@ let select_next t =
     { t with current_position = min allowed_index next_selection }
 
 let select_previous t =
+  let t = recalculate_index t in
   let next_position = pred t.current_position in
   { t with current_position = max 0 next_position }
 
 let restrict_with_limit ~limit t = { t with current_position = max 0 @@ min t.current_position limit }
 
-let toggle_mark ~id t =
-  let marked_indices = t.marked_indices in
+let toggle_mark_at_current_index t =
+  let t = recalculate_index t in
+  let marked_indices = t.marked_indices and idx = t.current_position in
   {
     t with
     marked_indices =
-      (if Int_set.mem id marked_indices then Int_set.remove id marked_indices else Int_set.add id marked_indices);
+      (if Int_set.mem idx marked_indices then Int_set.remove idx marked_indices else Int_set.add idx marked_indices);
   }
 
 let is_marked ~id { marked_indices; _ } = Int_set.mem id marked_indices
 
 let iter_with_matching ~offset ~size ~f t =
-  let matcher = t.matcher_resolver () and candidates = t.candidates_resolver () in
-  let matched_indices = Matcher.matched_indices matcher in
-  let match_results = Matcher.match_results matcher in
-  if Vector.length matched_indices <= 0 then ()
+  let matcher = t.matcher_resolver () in
+  let matched_results = New_matcher.matched_results matcher in
+  if Array.length matched_results <= 0 then ()
   else
-    Vector.sub matched_indices offset size
-    |> Vector.iteri ~f:(fun index matched_index ->
-           let candidate = Vector.unsafe_get candidates matched_index
-           and match_result =
-             if Vector.length match_results < Vector.length matched_indices then Match_result.empty
-             else Vector.unsafe_get match_results matched_index
-           in
-           let marked = is_marked ~id:matched_index t in
+    Array.sub matched_results offset (min (Array.length matched_results - offset) size)
+    |> Array.iteri (fun index (candidate, match_result) ->
+           let marked = is_marked ~id:index t in
 
-           f { candidate; marked; selected = t.current_position = index; match_result })
+           f index { candidate; marked; selected = t.current_position = index; match_result })
+
+let selected_indices t =
+  if Int_set.is_empty t.marked_indices then [ t.current_position ] else Int_set.to_seq t.marked_indices |> List.of_seq
+
+let current_selected_index { current_position; _ } = current_position

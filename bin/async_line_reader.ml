@@ -6,26 +6,23 @@ let mailbox t = t.line_mailbox
 
 let open_channel_for_async fd =
   let duplicated = Lwt_unix.dup fd in
-  Lwt_unix.set_blocking duplicated false;
-  Lwt_io.of_fd ~mode:Lwt_io.Input duplicated
+  Lwt_unix.set_blocking ~set_flags:true duplicated false;
+  duplicated
 
 let read_async fd t =
   let channel = open_channel_for_async fd in
   let mvar = t.line_mailbox in
-  let open Lwt in
   let reader =
-    catch
-      (fun () ->
-        let rec read_lines channel =
-          catch
-            (fun () ->
-              let%lwt line = Lwt_io.read_line_opt channel in
-              (match line with None -> return_unit | Some line -> Lwt_mvar.put mvar line);%lwt
-              read_lines channel)
-            (fun _ -> return_unit)
-        in
-        read_lines channel)
-      (fun _ -> return_unit)
+    let rec read_lines channel =
+      Lwt.catch
+        (fun () ->
+          let%lwt line = Lwt_io.read_line channel in
+          Lwt_mvar.put mvar line;%lwt
+          Lwt_unix.sleep 0.0;%lwt
+          read_lines channel)
+        (fun _ -> Lwt.return_unit)
+    in
+    read_lines (Lwt_io.of_fd ~mode:Lwt_io.Input channel)
   in
-  let close () = Lwt_io.close channel |> ignore_result in
+  let close () = Lwt_unix.close channel |> Lwt.ignore_result in
   (reader, close)

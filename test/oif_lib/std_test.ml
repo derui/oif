@@ -74,3 +74,4 @@ let tests =
         Alcotest.(check @@ list int) "from" [] (Seq.range (-1) 0 |> List.of_seq);
         Alcotest.(check @@ list int) "to" [] (Seq.range 0 (-1) |> List.of_seq) );
   ]
+  |> List.map ~f:(fun (name, level, f) -> Alcotest_lwt.test_case_sync name level f)

@@ -54,3 +54,4 @@ let tests =
             Alcotest.(check int) (Printf.sprintf "data is %s" str) expected actual)
           data );
   ]
+  |> List.map (fun (name, level, f) -> Alcotest_lwt.test_case_sync name level f)

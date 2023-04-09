@@ -6,33 +6,35 @@ type t = {
   mutable current_filter : (module Filter.S);
   mutable available_filters : (Widget_main.filter * (module Filter.S)) list;
   mutable current_query : string option;
-  all_candidates : Candidate.t Vector.t ref;
-  matcher : Matcher.t;
+  matcher : New_matcher.t;
   change_filter_mutex : Lwt_mutex.t;
+  candidate_mutex : Lwt_mutex.t;
+  count_of_matches : int React.signal;
+  set_count_of_matches : int -> unit;
 }
 
 let make ~current_filter ~available_filters =
-  let all_candidates = ref @@ Vector.empty () in
+  let count_of_matches, set_count_of_matches = React.S.create 0 in
   {
     current_filter;
     available_filters;
     current_query = None;
-    matcher = Matcher.make ~candidates:all_candidates;
-    all_candidates;
+    matcher = New_matcher.make ();
     change_filter_mutex = Lwt_mutex.create ();
+    candidate_mutex = Lwt_mutex.create ();
+    count_of_matches;
+    set_count_of_matches;
   }
 
 let update_available_filters t filters = t.available_filters <- filters
-
-let push_line ~candidate t =
-  let module F = (val t.current_filter) in
-  !(t.all_candidates) |> Vector.push ~value:candidate
 
 let update_query query t =
   t.current_query <- (if String.length query > 0 then Some query else None);
   let module F = (val t.current_filter) in
   let query = Option.value ~default:"" t.current_query in
-  Matcher.apply_filter ~filter:t.current_filter ~query t.matcher
+  Lwt_mutex.with_lock t.candidate_mutex (fun () ->
+      New_matcher.apply_filter ~filter:t.current_filter ~query t.matcher;%lwt
+      t.set_count_of_matches (New_matcher.matched_results t.matcher |> Array.length) |> Lwt.return)
 
 let find_filter filter t = List.find ~f:(fun (filter', _) -> filter = filter') t.available_filters
 
@@ -48,7 +50,20 @@ let current_filter_name t =
       let module F = (val t.current_filter : Filter.S) in
       F.unique_name |> Lwt.return)
 
-let count_of_matches { all_candidates; matcher; current_query; _ } =
-  match current_query with
-  | None   -> Vector.length !all_candidates
-  | Some _ -> Vector.length @@ Matcher.matched_indices matcher
+let count_of_matches { matcher; _ } = New_matcher.matched_results matcher |> Array.length
+
+let matched_results { matcher; _ } = New_matcher.matched_results matcher
+
+let write_async mailbox t =
+  let rec loop () =
+    let%lwt line = Lwt_mvar.take mailbox in
+    let%lwt () =
+      Lwt_mutex.with_lock t.candidate_mutex (fun () ->
+          let length = t.matcher |> New_matcher.all_match_results |> Array.length in
+          let candidate = Candidate.make ~id:(succ length) ~text:line in
+          t.matcher |> New_matcher.add_candidate ~candidate ~filter:t.current_filter;%lwt
+          New_matcher.matched_results t.matcher |> Array.length |> t.set_count_of_matches |> Lwt.return)
+    in
+    loop ()
+  in
+  loop ()

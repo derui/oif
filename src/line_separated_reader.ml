@@ -1,4 +1,4 @@
-module S = struct
+include struct
   type t = { line_mailbox : string Lwt_mvar.t }
 
   let make () = { line_mailbox = Lwt_mvar.create_empty () }
@@ -32,5 +32,3 @@ module S = struct
     let close () = Lwt_io.close channel |> ignore_result in
     (reader, close)
 end
-
-include S

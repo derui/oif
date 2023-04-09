@@ -23,7 +23,7 @@ let selected_style = { LTerm_style.none with LTerm_style.bold = Some true }
 let make_styled_candidate ~selected ~result candidate =
   let module O = Oif_lib in
   match O.Match_result.matched result with
-  | []      -> LTerm_text.eval [ LTerm_text.S (O.Candidate.text candidate) ]
+  | [] -> LTerm_text.eval [ LTerm_text.S (O.Candidate.text candidate) ]
   | matched ->
       let merged_style_range = Oif_lib.Range.merge matched in
       let styled_texts =

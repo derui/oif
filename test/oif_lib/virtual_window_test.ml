@@ -85,3 +85,4 @@ let tests =
         Alcotest.(check int) "end index" 9 w.end_index;
         Alcotest.(check int) "focused index" 5 w.focused_index );
   ]
+  |> List.map (fun (name, level, f) -> Alcotest_lwt.test_case_sync name level f)

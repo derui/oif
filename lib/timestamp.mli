@@ -33,4 +33,4 @@ module type Timestamper = sig
   val make : unit -> (module Instance)
 end
 
-module Make (T : Time) : Timestamper
+module Make : functor (_ : Time) -> Timestamper

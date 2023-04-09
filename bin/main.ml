@@ -3,7 +3,7 @@ open Std
 open Oif
 
 type exit_status =
-  | Confirm              of string list
+  | Confirm of string list
   | Confirmed_with_empty
   | Quit
 
@@ -29,7 +29,7 @@ let get_tty_name () =
   let* stderr_stat = try Unix.fstat Unix.stderr |> Option.some with _ -> None in
 
   let rec loop = function
-    | []             -> None
+    | [] -> None
     | prefix :: rest -> (
         let files = Sys.readdir prefix in
         let ret =
@@ -51,29 +51,27 @@ let create_window () =
       let in_chan = Lwt_io.of_fd ~mode:Lwt_io.input tty_fd in
       let out_chan = Lwt_io.of_fd ~mode:Lwt_io.output tty_fd in
       LTerm.create tty_fd in_chan tty_fd out_chan
-  | None     -> LTerm.stdout |> Lazy.force
+  | None -> LTerm.stdout |> Lazy.force
 
 (* event handlers *)
 
-let selection_event_handler app_state box information_line query =
-  App_state.update_query query app_state;
-  let candidates = app_state.all_candidates in
-  let number = App_state.count_of_matches app_state in
-  information_line#set_number_of_candidates number;
-  box#set_candidates candidates;
-  box#set_matcher app_state.matcher |> Lwt.return
-
-let confirm_candidate_handler wakener candidate_state selected_indices =
-  let%lwt candidates = Candidate_state.get_candidates candidate_state in
-  let _ =
-    match selected_indices with
-    | [||] -> Lwt.wakeup_later wakener Confirmed_with_empty
-    | _    ->
-        let ret = ref [] in
-        Array.iter (fun index -> ret := (Vector.unsafe_get candidates index |> Candidate.text) :: !ret) selected_indices;
-        Lwt.wakeup_later wakener (Confirm !ret)
-  in
+let selection_event_handler app_state query box =
+  App_state.update_query query app_state;%lwt
+  box#notify_candidates_updated ();
   Lwt.return_unit
+
+let confirm_candidate_handler wakener candidate_state = function
+  | Widget_candidate_box.Confirmed selected_indices ->
+      let candidates = App_state.matched_results candidate_state in
+      let _ =
+        match selected_indices with
+        | [] -> Lwt.wakeup_later wakener Confirmed_with_empty
+        | _ ->
+            let ret = ref [] in
+            List.iter ~f:(fun index -> ret := (candidates.(index) |> fst |> Candidate.text) :: !ret) selected_indices;
+            Lwt.wakeup_later wakener (Confirm !ret)
+      in
+      Lwt.return_unit
 
 let change_filter_handler ~before_change app_state information_line filter =
   let%lwt () = before_change app_state in
@@ -85,7 +83,7 @@ let quit_handler wakener = function false -> () | true -> Lwt.wakeup_later waken
 
 type finalizer = unit -> unit
 
-let finalizers = ref []
+let finalizers : finalizer list ref = ref []
 
 let add_finalizer finalizer = finalizers := finalizer :: !finalizers
 
@@ -104,30 +102,26 @@ let () =
           load_migemo_filter option (fun f ->
               App_state.update_available_filters app_state (app_state.available_filters @ f) |> Lwt.return)
       in
-      let candidate_state = Candidate_state.make () in
       let async_reader = Async_line_reader.make () in
 
       let monad =
         let%lwt window = create_window () in
 
-        let box = new Widget_candidate_box.t () in
+        let box = new Widget_candidate_box.t (Index_coordinator.make ~matcher:(fun () -> app_state.matcher)) in
         let information_line = new Widget_information_line.t () in
         let read_line = new Widget_read_line.t ?query:option.query () in
         let module TR = Timestamp.Make (struct
           let now () = Unix.time () |> Int64.of_float
         end) in
-        let module I = (val TR.make ()) in
-        let hub = Event_hub.make (module I) in
-        let available_filters = app_state.available_filters |> List.map ~f:fst in
+        let hub = Event_hub.make (TR.make ()) in
         let term =
           new Widget_main.t
             ~box:(box :> LTerm_widget.t)
             ~read_line:(read_line :> LTerm_widget.t)
             ~information_line:(information_line :> LTerm_widget.t)
-            ~available_filters ~event_hub:hub ()
+            ~event_hub:hub ()
         in
         information_line#set_filter_name @@ App_state.name_of_filter Widget_main.Partial_match;
-        box#set_matcher app_state.matcher;
 
         Option.iter
           (fun path ->
@@ -142,37 +136,29 @@ let () =
             Lwt.async (fun () -> replay))
           option.Cli_option.replay_event_path;
 
-        React.S.changes candidate_state.signal
-        |> Lwt_react.E.map_s (fun candidate ->
-               let number = App_state.count_of_matches app_state in
+        React.S.changes app_state.count_of_matches
+        |> Lwt_react.E.map_s (fun number ->
                information_line#set_number_of_candidates number;
-
-               match candidate with
-               | [ candidate ] ->
-                   App_state.push_line ~candidate app_state;
-                   app_state.all_candidates |> box#set_candidates |> Lwt.return
-               | _             -> Lwt.return_unit)
+               box#notify_candidates_updated () |> Lwt.return)
         |> Lwt_react.E.keep;
 
         (* define event and handler *)
         React.S.changes read_line#text
-        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state box information_line text)
+        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state text box)
         |> Lwt_react.E.keep;
         React.S.changes term#switch_filter
         |> Lwt_react.E.map_s (change_filter_handler app_state information_line ~before_change)
         |> Lwt_react.E.keep;
         let waiter, wakener = Lwt.task () in
-        React.S.changes term#quit |> React.E.map (quit_handler wakener) |> Lwt_react.E.keep;
-        React.S.changes box#current_candidates
-        |> Lwt_react.E.map_s (confirm_candidate_handler wakener candidate_state)
-        |> Lwt_react.E.keep;
+        React.E.once term#quit |> React.E.map (quit_handler wakener) |> Lwt_react.E.keep;
+        React.E.once box#event |> Lwt_react.E.map_s (confirm_candidate_handler wakener app_state) |> Lwt_react.E.keep;
 
         (* running asynchronous data reading *)
         let read_async, close_read_async = Async_line_reader.read_async Lwt_unix.stdin async_reader in
-        let write_async = Candidate_state.write_async (Async_line_reader.mailbox async_reader) candidate_state in
+        let write_async = App_state.write_async (Async_line_reader.mailbox async_reader) app_state in
         add_finalizer close_read_async;
-        Lwt.async (fun () -> read_async);
-        Lwt.async (fun () -> write_async);
+        Lwt.dont_wait (fun () -> read_async) ignore;
+        Lwt.dont_wait (fun () -> write_async) ignore;
 
         let%lwt mode = LTerm.enter_raw_mode window in
         let%lwt status =
@@ -186,9 +172,9 @@ let () =
         Lwt.return status
       in
       match Lwt_main.run monad with
-      | Quit                 -> exit 130
+      | Quit -> exit 130
       | Confirmed_with_empty -> exit 1
-      | Confirm v            ->
+      | Confirm v ->
           let delimiter = if option.print_nul then Char.chr 0 |> String.make 1 else "\n" in
           String.concat delimiter v |> Printf.printf "%s\n";
           exit 0)

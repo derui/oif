@@ -59,3 +59,4 @@ let tests =
 
         Alcotest.(check int64) "recorded" 6L time );
   ]
+  |> List.map (fun (name, level, f) -> Alcotest_lwt.test_case_sync name level f)
