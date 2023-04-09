@@ -55,10 +55,8 @@ let create_window () =
 
 (* event handlers *)
 
-let selection_event_handler app_state information_line query box =
+let selection_event_handler app_state query box =
   App_state.update_query query app_state;%lwt
-  let number = App_state.count_of_matches app_state in
-  information_line#set_number_of_candidates number;
   box#notify_candidates_updated ();
   Lwt.return_unit
 
@@ -104,7 +102,6 @@ let () =
           load_migemo_filter option (fun f ->
               App_state.update_available_filters app_state (app_state.available_filters @ f) |> Lwt.return)
       in
-      let candidate_state = Candidate_state.make () in
       let async_reader = Async_line_reader.make () in
 
       let monad =
@@ -116,15 +113,13 @@ let () =
         let module TR = Timestamp.Make (struct
           let now () = Unix.time () |> Int64.of_float
         end) in
-        let module I = (val TR.make ()) in
-        let hub = Event_hub.make (module I) in
-        let available_filters = app_state.available_filters |> List.map ~f:fst in
+        let hub = Event_hub.make (TR.make ()) in
         let term =
           new Widget_main.t
             ~box:(box :> LTerm_widget.t)
             ~read_line:(read_line :> LTerm_widget.t)
             ~information_line:(information_line :> LTerm_widget.t)
-            ~available_filters ~event_hub:hub ()
+            ~event_hub:hub ()
         in
         information_line#set_filter_name @@ App_state.name_of_filter Widget_main.Partial_match;
 
@@ -141,31 +136,29 @@ let () =
             Lwt.async (fun () -> replay))
           option.Cli_option.replay_event_path;
 
-        React.S.changes candidate_state.signal
-        |> Lwt_react.E.map_s (fun candidate ->
-               let number = App_state.count_of_matches app_state in
+        React.S.changes app_state.count_of_matches
+        |> Lwt_react.E.map_s (fun number ->
                information_line#set_number_of_candidates number;
-
-               match candidate with [ candidate ] -> App_state.push_line ~candidate app_state | _ -> Lwt.return_unit)
+               box#notify_candidates_updated () |> Lwt.return)
         |> Lwt_react.E.keep;
 
         (* define event and handler *)
         React.S.changes read_line#text
-        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state information_line text box)
+        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state text box)
         |> Lwt_react.E.keep;
         React.S.changes term#switch_filter
         |> Lwt_react.E.map_s (change_filter_handler app_state information_line ~before_change)
         |> Lwt_react.E.keep;
         let waiter, wakener = Lwt.task () in
-        React.S.changes term#quit |> React.E.map (quit_handler wakener) |> Lwt_react.E.keep;
+        React.E.once term#quit |> React.E.map (quit_handler wakener) |> Lwt_react.E.keep;
         React.E.once box#event |> Lwt_react.E.map_s (confirm_candidate_handler wakener app_state) |> Lwt_react.E.keep;
 
         (* running asynchronous data reading *)
         let read_async, close_read_async = Async_line_reader.read_async Lwt_unix.stdin async_reader in
-        let write_async = Candidate_state.write_async (Async_line_reader.mailbox async_reader) candidate_state in
+        let write_async = App_state.write_async (Async_line_reader.mailbox async_reader) app_state in
         add_finalizer close_read_async;
-        Lwt.async (fun () -> read_async);
-        Lwt.async (fun () -> write_async);
+        Lwt.dont_wait (fun () -> read_async) ignore;
+        Lwt.dont_wait (fun () -> write_async) ignore;
 
         let%lwt mode = LTerm.enter_raw_mode window in
         let%lwt status =

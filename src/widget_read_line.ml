@@ -47,16 +47,14 @@ class t ?(prompt = "QUERY> ") ?(query = "") () =
 
     method set_prompt v = set_prompt v
 
-    val mutable _text_event = React.E.never
-
     initializer
       Zed_edit.insert text_widget#context @@ Zed_rope.of_string @@ Zed_string.of_utf8 query;
 
       let signal = Zed_string.of_utf8 prompt |> LTerm_text.of_string in
       self#set_prompt signal;
-      _text_event <-
-        React.E.select [ React.E.map ignore @@ Zed_edit.changes text_widget#engine ]
-        |> React.E.map (fun _ -> set_text @@ Zed_string.to_utf8 text_widget#text);
+      React.E.map ignore @@ Zed_edit.changes text_widget#engine
+      |> React.E.map (fun _ -> set_text @@ Zed_string.to_utf8 text_widget#text)
+      |> Lwt_react.E.keep;
 
       self#on_event (fun e ->
           text_widget#send_event e;

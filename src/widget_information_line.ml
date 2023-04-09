@@ -71,13 +71,18 @@ class t () =
     val mutable _selection_update_event = React.E.create () |> fst
 
     initializer
+      let module Limiter = Lwt_throttle.Make (struct
+        type t = string
+
+        let equal = Stdlib.( = )
+
+        let hash _ = 1
+      end) in
+      let limiter = Limiter.create ~max:1 ~n:1 ~rate:60 in
+      let e = Lwt_react.E.map_s (fun _ -> Limiter.wait limiter "change") (React.S.changes label_num#signal) in
       (* keep event reference *)
       _selection_update_event <-
-        React.E.select
-          [
-            React.E.stamp (React.S.changes label_num#signal) ignore;
-            React.E.stamp (React.S.changes label_filter#signal) ignore;
-          ]
+        React.E.select [ React.E.stamp e ignore; React.E.stamp (React.S.changes label_filter#signal) ignore ]
         |> React.E.map (fun _ -> self#queue_draw);
 
       self#add ~expand:true label_num;
