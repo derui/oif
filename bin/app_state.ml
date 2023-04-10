@@ -34,7 +34,7 @@ let update_query query t =
   let query = Option.value ~default:"" t.current_query in
   Lwt_mutex.with_lock t.candidate_mutex (fun () ->
       New_matcher.apply_filter ~filter:t.current_filter ~query t.matcher;%lwt
-      t.set_count_of_matches (New_matcher.matched_results t.matcher |> Array.length) |> Lwt.return)
+      t.set_count_of_matches (New_matcher.matched_count t.matcher) |> Lwt.return)
 
 let find_filter filter t = List.find ~f:(fun (filter', _) -> filter = filter') t.available_filters
 
@@ -50,7 +50,7 @@ let current_filter_name t =
       let module F = (val t.current_filter : Filter.S) in
       F.unique_name |> Lwt.return)
 
-let count_of_matches { matcher; _ } = New_matcher.matched_results matcher |> Array.length
+let count_of_matches { matcher; _ } = New_matcher.matched_count matcher
 
 let matched_results { matcher; _ } = New_matcher.matched_results matcher
 
@@ -62,7 +62,7 @@ let write_async mailbox t =
           let length = t.matcher |> New_matcher.all_match_results |> Array.length in
           let candidate = Candidate.make ~id:(succ length) ~text:line in
           t.matcher |> New_matcher.add_candidate ~candidate ~filter:t.current_filter;%lwt
-          New_matcher.matched_results t.matcher |> Array.length |> t.set_count_of_matches |> Lwt.return)
+          New_matcher.matched_count t.matcher |> t.set_count_of_matches |> Lwt.return)
     in
     loop ()
   in
