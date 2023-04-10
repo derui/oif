@@ -14,3 +14,6 @@ val all_match_results : t -> (Candidate.t * Match_result.t) array
 
 val matched_results : t -> (Candidate.t * Match_result.t) array
 (** [matched_results t] returns only matched result on previous apply_filter or add_candidate *)
+
+val matched_count : t -> int
+(** [matched_count t] get current count of matched candidate. This function works in constant time *)

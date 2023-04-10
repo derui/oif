@@ -86,4 +86,19 @@ let test4 =
       Alcotest.(check @@ list @@ int) "queries" [ 2; 4 ] result;
       Lwt.return_unit )
 
-let tests = [ test1; test2; test3; test4 ] |> List.map (fun (name, typ, case) -> Alcotest_lwt.test_case name typ case)
+let test5 =
+  ( "should return count of matched index",
+    `Quick,
+    fun _ () ->
+      let t = M.make () in
+      M.apply_filter ~filter:(module Filter) ~query:"text" t;%lwt
+      V.to_seq @@ candidates ()
+      |> Lwt_seq.of_seq
+      |> Lwt_seq.iter_s (fun v -> M.add_candidate ~candidate:v ~filter:(module Even_match_filter) t);%lwt
+      M.add_candidate ~candidate:(C.make ~id:5 ~text:"append") ~filter:(module Even_match_filter) t;%lwt
+      let result = M.matched_count t in
+      Alcotest.(check @@ int) "queries" 2 result;
+      Lwt.return_unit )
+
+let tests =
+  [ test1; test2; test3; test4; test5 ] |> List.map (fun (name, typ, case) -> Alcotest_lwt.test_case name typ case)

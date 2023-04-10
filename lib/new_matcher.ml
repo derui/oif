@@ -57,3 +57,5 @@ let all_match_results { match_results; candidates; _ } =
 let matched_results t =
   t.matched_indices |> V.to_array
   |> Array.map (fun index -> (V.unsafe_get t.candidates index, V.unsafe_get t.match_results index))
+
+let matched_count t = t.matched_indices |> V.length
