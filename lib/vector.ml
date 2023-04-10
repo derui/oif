@@ -29,6 +29,13 @@ let map ~f t =
   v'.last_index <- t.last_index;
   v'
 
+let mapi ~f t =
+  let array = Array.mapi (fun i v -> Option.map (f i) v) t.array in
+  let v' = empty () in
+  v'.array <- array;
+  v'.last_index <- t.last_index;
+  v'
+
 let of_seq seq =
   let array = seq |> Seq.map (fun v -> Some v) |> Array.of_seq in
   let last_index = Array.length array - 1 in

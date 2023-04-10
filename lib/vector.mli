@@ -18,6 +18,9 @@ val length : 'a t -> int
 val map : f:('a -> 'b) -> 'a t -> 'b t
 (** [map ~f t] apply [f] to each candidate, and return new array. *)
 
+val mapi : f:(int -> 'a -> 'b) -> 'a t -> 'b t
+(** [mapi ~f t] apply [f] to each candidate with index, and return new array. *)
+
 val unsafe_get : 'a t -> int -> 'a
 (** [unsafe_get t index] get element at [index]. Raise [Invalid_argument] if give invalid index *)
 
