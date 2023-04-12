@@ -55,20 +55,19 @@ let create_window () =
 
 (* event handlers *)
 
-let selection_event_handler app_state query box =
-  App_state.update_query query app_state;%lwt
-  box#notify_candidates_updated ();
-  Lwt.return_unit
+let selection_event_handler app_state query = App_state.update_query query app_state
 
-let confirm_candidate_handler wakener candidate_state = function
+let confirm_candidate_handler wakener app_state = function
   | Widget_candidate_box.Confirmed selected_indices ->
-      let candidates = App_state.matched_results candidate_state in
+      let candidates = App_state.matched_results app_state in
       let _ =
         match selected_indices with
         | [] -> Lwt.wakeup_later wakener Confirmed_with_empty
         | _ ->
             let ret = ref [] in
-            List.iter ~f:(fun index -> ret := (candidates.(index) |> fst |> Candidate.text) :: !ret) selected_indices;
+            List.iter
+              ~f:(fun index -> ret := (Vector.unsafe_get candidates index |> fst |> Candidate.text) :: !ret)
+              selected_indices;
             Lwt.wakeup_later wakener (Confirm !ret)
       in
       Lwt.return_unit
@@ -144,7 +143,7 @@ let () =
 
         (* define event and handler *)
         React.S.changes read_line#text
-        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state text box)
+        |> Lwt_react.E.map_s (fun text -> selection_event_handler app_state text)
         |> Lwt_react.E.keep;
         React.S.changes term#switch_filter
         |> Lwt_react.E.map_s (change_filter_handler app_state information_line ~before_change)

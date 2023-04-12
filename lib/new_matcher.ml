@@ -46,16 +46,19 @@ let apply_filter ~filter ~query t =
          if Match_result.is_matched result then V.push ~value:index matched_indices else ());
   t.match_results <- match_results;
   t.matched_indices <- matched_indices;
-  t.last_query <- Some query;
+
+  t.last_query <- (if query = "" then None else Some query);
   Lwt.return_unit
 
 let all_match_results { match_results; candidates; _ } =
   assert (V.length match_results = V.length candidates);
 
-  match_results |> V.to_array |> Array.mapi (fun index result -> (V.unsafe_get candidates index, result))
+  match_results |> Vector.mapi ~f:(fun index result -> (V.unsafe_get candidates index, result))
 
-let matched_results t =
-  t.matched_indices |> V.to_array
-  |> Array.map (fun index -> (V.unsafe_get t.candidates index, V.unsafe_get t.match_results index))
+let matched_results ~offset ~size t =
+  Vector.sub t.matched_indices offset (min (Vector.length t.matched_indices - offset) size)
+  |> Vector.map ~f:(fun index -> (V.unsafe_get t.candidates index, V.unsafe_get t.match_results index))
 
 let matched_count t = t.matched_indices |> V.length
+
+let total_candidate_count { candidates; _ } = Vector.length candidates

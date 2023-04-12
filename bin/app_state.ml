@@ -52,14 +52,15 @@ let current_filter_name t =
 
 let count_of_matches { matcher; _ } = New_matcher.matched_count matcher
 
-let matched_results { matcher; _ } = New_matcher.matched_results matcher
+let matched_results { matcher; _ } =
+  New_matcher.matched_results ~offset:0 ~size:(New_matcher.matched_count matcher) matcher
 
 let write_async mailbox t =
   let rec loop () =
     let%lwt line = Lwt_mvar.take mailbox in
     let%lwt () =
       Lwt_mutex.with_lock t.candidate_mutex (fun () ->
-          let length = t.matcher |> New_matcher.all_match_results |> Array.length in
+          let length = t.matcher |> New_matcher.total_candidate_count in
           let candidate = Candidate.make ~id:(succ length) ~text:line in
           t.matcher |> New_matcher.add_candidate ~candidate ~filter:t.current_filter;%lwt
           New_matcher.matched_count t.matcher |> t.set_count_of_matches |> Lwt.return)

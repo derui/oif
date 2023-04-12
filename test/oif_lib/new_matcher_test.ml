@@ -34,7 +34,7 @@ let test1 =
       |> Lwt_seq.of_seq
       |> Lwt_seq.iter_s (fun v -> M.add_candidate ~candidate:v ~filter:(module Filter) t);%lwt
       let%lwt () = M.apply_filter ~filter:(module Filter) ~query:"text" t in
-      let result = M.all_match_results t |> Array.to_list in
+      let result = M.all_match_results t |> Vector.to_array |> Array.to_list in
       let actual = result |> List.map (fun (_, v) -> MR.matched v) in
       Alcotest.(check @@ list @@ list @@ pair int int)
         "queries"
@@ -51,7 +51,7 @@ let test2 =
       V.to_seq @@ candidates ()
       |> Lwt_seq.of_seq
       |> Lwt_seq.iter_s (fun v -> M.add_candidate ~candidate:v ~filter:(module Filter) t);%lwt
-      let result = M.all_match_results t |> Array.to_list in
+      let result = M.all_match_results t |> Vector.to_array |> Array.to_list in
       let actual = result |> List.map (fun (_, v) -> MR.matched v) in
       Alcotest.(check @@ list @@ list @@ pair int int)
         "queries"
@@ -67,7 +67,7 @@ let test3 =
       V.to_seq @@ candidates ()
       |> Lwt_seq.of_seq
       |> Lwt_seq.iter_s (fun v -> M.add_candidate ~candidate:v ~filter:(module Filter) t);%lwt
-      let result = M.all_match_results t |> Array.to_list in
+      let result = M.all_match_results t |> Vector.to_array |> Array.to_list in
       let actual = result |> List.map (fun (_, v) -> MR.matched v) in
       Alcotest.(check @@ list @@ list @@ pair int int) "queries" [ []; []; []; [] ] actual;
       Lwt.return_unit )
@@ -82,7 +82,11 @@ let test4 =
       |> Lwt_seq.of_seq
       |> Lwt_seq.iter_s (fun v -> M.add_candidate ~candidate:v ~filter:(module Even_match_filter) t);%lwt
       M.add_candidate ~candidate:(C.make ~id:5 ~text:"append") ~filter:(module Even_match_filter) t;%lwt
-      let result = M.matched_results t |> Array.map (fun (c, _) -> c.Candidate.id) |> Array.to_list in
+      let result =
+        M.matched_results ~offset:0 ~size:4 t |> Vector.to_array
+        |> Array.map (fun (c, _) -> c.Candidate.id)
+        |> Array.to_list
+      in
       Alcotest.(check @@ list @@ int) "queries" [ 2; 4 ] result;
       Lwt.return_unit )
 
@@ -100,5 +104,24 @@ let test5 =
       Alcotest.(check @@ int) "queries" 2 result;
       Lwt.return_unit )
 
+let test6 =
+  ( "should be able to get results with offset and size",
+    `Quick,
+    fun _ () ->
+      let t = M.make () in
+      M.apply_filter ~filter:(module Filter) ~query:"text" t;%lwt
+      V.to_seq @@ candidates ()
+      |> Lwt_seq.of_seq
+      |> Lwt_seq.iter_s (fun v -> M.add_candidate ~candidate:v ~filter:(module Filter) t);%lwt
+      M.add_candidate ~candidate:(C.make ~id:5 ~text:"append") ~filter:(module Filter) t;%lwt
+      let result =
+        M.matched_results ~offset:1 ~size:2 t |> Vector.to_array
+        |> Array.map (fun (c, _) -> c.Candidate.id)
+        |> Array.to_list
+      in
+      Alcotest.(check @@ list @@ int) "queries" [ 2; 3 ] result;
+      Lwt.return_unit )
+
 let tests =
-  [ test1; test2; test3; test4; test5 ] |> List.map (fun (name, typ, case) -> Alcotest_lwt.test_case name typ case)
+  [ test1; test2; test3; test4; test5; test6 ]
+  |> List.map (fun (name, typ, case) -> Alcotest_lwt.test_case name typ case)

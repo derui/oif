@@ -31,13 +31,13 @@ let make ~matcher = { current_position = 0; marked_indices = Int_set.empty; matc
 
 let recalculate_index t =
   let matcher = t.matcher_resolver () in
-  let matched_result_size = Array.length @@ New_matcher.matched_results matcher in
+  let matched_result_size = New_matcher.matched_count matcher in
 
   { t with current_position = max 0 @@ min t.current_position (matched_result_size - 1) }
 
 let select_next t =
   let t = recalculate_index t in
-  let size = t.matcher_resolver () |> New_matcher.matched_results |> Array.length in
+  let size = t.matcher_resolver () |> New_matcher.matched_count in
   if size <= 0 then t
   else
     let next_selection = succ t.current_position in
@@ -64,11 +64,10 @@ let is_marked ~id { marked_indices; _ } = Int_set.mem id marked_indices
 
 let iter_with_matching ~offset ~size ~f t =
   let matcher = t.matcher_resolver () in
-  let matched_results = New_matcher.matched_results matcher in
-  if Array.length matched_results <= 0 then ()
+  if New_matcher.matched_count matcher <= 0 then ()
   else
-    Array.sub matched_results offset (min (Array.length matched_results - offset) size)
-    |> Array.iteri (fun index (candidate, match_result) ->
+    New_matcher.matched_results ~offset ~size matcher
+    |> Vector.iteri ~f:(fun index (candidate, match_result) ->
            let marked = is_marked ~id:index t in
 
            f index { candidate; marked; selected = t.current_position = index; match_result })

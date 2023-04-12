@@ -75,6 +75,4 @@ let iter ~f t = t |> to_seq |> Seq.iter f
 
 let iteri ~f t = t |> to_seq_with_index |> Seq.iter (fun (index, value) -> f index value)
 
-let sub t start len =
-  let t = { array = Array.copy t.array; last_index = t.last_index } in
-  { array = Array.sub t.array start len; last_index = pred len }
+let sub t start len = { array = Array.sub t.array start len; last_index = pred len }
