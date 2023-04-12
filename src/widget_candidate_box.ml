@@ -119,7 +119,7 @@ class t (_coodinator : Index_coordinator.t) =
       let limiter = Limiter.create ~max:1 ~n:1 ~rate:60 in
       let e = Lwt_react.E.map_s (fun _ -> Limiter.wait limiter "change") (React.S.changes coordinator) in
       (* keep event reference *)
-      _selection_update_event <- React.E.select [ React.E.stamp e ignore ] |> React.E.map (fun _ -> self#queue_draw);
+      _selection_update_event <- React.E.select [ e ] |> React.E.map (fun b -> if b then self#queue_draw);
       self#on_event self#handle_event;
 
       self#bind

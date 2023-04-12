@@ -82,8 +82,8 @@ class t () =
       let e = Lwt_react.E.map_s (fun _ -> Limiter.wait limiter "change") (React.S.changes label_num#signal) in
       (* keep event reference *)
       _selection_update_event <-
-        React.E.select [ React.E.stamp e ignore; React.E.stamp (React.S.changes label_filter#signal) ignore ]
-        |> React.E.map (fun _ -> self#queue_draw);
+        React.E.select [ e; React.E.stamp (React.S.changes label_filter#signal) true ]
+        |> React.E.map (fun should_draw -> if should_draw then self#queue_draw);
 
       self#add ~expand:true label_num;
       self#add ~expand:false label_filter
