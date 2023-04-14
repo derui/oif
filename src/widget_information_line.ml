@@ -23,12 +23,15 @@ class label_num_of_candidates () =
     val mutable _event_cache = React.E.never
 
     initializer
+      (* keep event reference *)
+      let e = React.S.changes number_of_candidates |> Lwt_react.E.limit (fun _ -> Lwt_unix.sleep 0.05) in
+
       _event_cache <-
-        React.S.changes number_of_candidates
+        React.E.select [ e ]
         |> React.E.map (fun v ->
                let s = self#make_string v in
-               set_size_request { LTerm_geom.rows = 1; cols = String.length s })
-        |> React.E.map (fun () -> self#queue_draw)
+               set_size_request { LTerm_geom.rows = 1; cols = String.length s };
+               self#queue_draw)
   end
 
 class label_filter_name () =
@@ -68,23 +71,7 @@ class t () =
 
     method set_filter_name v = label_filter#set_filter_name v
 
-    val mutable _selection_update_event = React.E.create () |> fst
-
     initializer
-      let module Limiter = Lwt_throttle.Make (struct
-        type t = string
-
-        let equal = Stdlib.( = )
-
-        let hash _ = 1
-      end) in
-      let limiter = Limiter.create ~max:1 ~n:1 ~rate:60 in
-      let e = Lwt_react.E.map_s (fun _ -> Limiter.wait limiter "change") (React.S.changes label_num#signal) in
-      (* keep event reference *)
-      _selection_update_event <-
-        React.E.select [ e; React.E.stamp (React.S.changes label_filter#signal) true ]
-        |> React.E.map (fun should_draw -> if should_draw then self#queue_draw);
-
       self#add ~expand:true label_num;
       self#add ~expand:false label_filter
   end

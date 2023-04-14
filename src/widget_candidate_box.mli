@@ -9,6 +9,7 @@ type event = Confirmed of int list
 (** Implementation for the box to show candidate and navigate. *)
 class t :
   Index_coordinator.t
+  -> unit
   -> object
        inherit LTerm_widget.t
 

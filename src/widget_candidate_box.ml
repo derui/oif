@@ -21,7 +21,7 @@ type event = Confirmed of int list
 let always_neq _ _ = false
 
 (** Implementation for the box to show candidate and navigate. *)
-class t (_coodinator : Index_coordinator.t) =
+class t (_coodinator : Index_coordinator.t) () =
   let coordinator, set_coordinator = React.S.create ~eq:always_neq @@ _coodinator in
   let event', set_event = React.E.create () in
 
@@ -109,17 +109,9 @@ class t (_coodinator : Index_coordinator.t) =
     val mutable _selection_update_event = React.E.never
 
     initializer
-      let module Limiter = Lwt_throttle.Make (struct
-        type t = string
-
-        let equal = Stdlib.( = )
-
-        let hash _ = 1
-      end) in
-      let limiter = Limiter.create ~max:1 ~n:1 ~rate:60 in
-      let e = Lwt_react.E.map_s (fun _ -> Limiter.wait limiter "change") (React.S.changes coordinator) in
+      let e = Lwt_react.E.limit (fun () -> Lwt_unix.sleep 0.05) (React.S.changes coordinator) in
       (* keep event reference *)
-      _selection_update_event <- React.E.select [ e ] |> React.E.map (fun b -> if b then self#queue_draw);
+      _selection_update_event <- React.E.select [ React.E.stamp e () ] |> React.E.map (fun () -> self#queue_draw);
       self#on_event self#handle_event;
 
       self#bind
