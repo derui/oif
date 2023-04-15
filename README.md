@@ -5,7 +5,12 @@
 
 Use `opam` to install `oif` . Currently this package do not merge into opam repository, so you should install locally.
 
+> `oif` always needs `migemocaml` to build. Sorry for inconvenience.
+
 ```shell
+$ git clone https://github.com/derui/migemocaml
+$ cd migemocaml
+$ opam install .
 $ git clone https://github.com/derui/oif
 $ cd oif
 $ opam install .
@@ -23,7 +28,7 @@ $ ls | oif --migemo_dict_directory=<dict directory>
 $ export OIF_DEFAULT_MIGEMO_DICT_DIRECTORY=<dict directory>
 $ ls | oif
 
-# Using pipe after oif is allowed
+# You can use pipe after oif to process with result
 $ ls | oif | sed -e 's/ /-/g'
 ```
 
@@ -43,7 +48,7 @@ $ ls | oif | sed -e 's/ /-/g'
 # Options #
 
 ```
-# If you want to read all info, please type `oif --help`
+# If you want to read all info, please do `oif --help` in your shell.
 
 OPTIONS
        --help[=FMT] (default=auto)
@@ -84,7 +89,7 @@ $ dune build
 ## Test ##
 
 ```shell
-$ dune runtest
+$ dune test
 ```
 
 # License #
