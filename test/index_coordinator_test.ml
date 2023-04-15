@@ -139,6 +139,21 @@ let test9 =
       Alcotest.(check @@ int) "index" 1 (C.current_selected_index t);
       Lwt.return_unit )
 
+let test10 =
+  ( "marked indices are sorted by natural",
+    `Quick,
+    fun _ () ->
+      let matcher = ref @@ Matcher.make () in
+      let t = C.make ~matcher:(fun () -> !matcher) in
+      let candidates = to_candidates [ (1, "text"); (2, "foo"); (3, "bar") ] in
+      candidates |> Lwt_list.iter_s (fun value -> Matcher.add_candidate ~candidate:value ~filter:(module F) !matcher);%lwt
+      let t =
+        t |> C.select_next |> C.select_next |> C.toggle_mark_at_current_index |> C.select_previous
+        |> C.toggle_mark_at_current_index
+      in
+      Alcotest.(check @@ list @@ int) "index" [ 1; 2 ] (C.selected_indices t);
+      Lwt.return_unit )
+
 let tests =
-  [ test1; test2; test3; test4; test5; test6; test7; test8; test9 ]
+  [ test1; test2; test3; test4; test5; test6; test7; test8; test9; test10 ]
   |> List.map (fun (name, level, f) -> Alcotest_lwt.test_case name level f)

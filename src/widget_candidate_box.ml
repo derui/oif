@@ -43,6 +43,14 @@ class t (_coodinator : Index_coordinator.t) () =
 
     method bind key action = bindings <- Bindings.add [ key ] action bindings
 
+    method private draw_selection ctx row =
+      let size = LTerm_draw.size ctx in
+      let row = min row @@ pred size.rows in
+      let rect = { LTerm_geom.row1 = row; row2 = row + 1; col1 = 0; col2 = String.length selection_prefix } in
+      let ctx = LTerm_draw.sub ctx rect in
+      Zed_string.of_utf8 selection_prefix
+      |> LTerm_draw.draw_string ctx 0 0 ~style:{ LTerm_style.none with foreground = Some LTerm_style.lred }
+
     method private draw_candidate ctx l selected candidate ~marked ~result =
       let module C = Candidate_style in
       let size = LTerm_draw.size ctx in
@@ -51,21 +59,14 @@ class t (_coodinator : Index_coordinator.t) () =
       let text = C.make_styled_candidate ~selected ~result candidate in
       LTerm_draw.draw_styled ctx' 0 0 text;
 
-      if marked then
-        let col1 = String.length selection_prefix and col2 = prefix_length in
-        let rect = { LTerm_geom.row1 = l; row2 = l + 1; col1; col2 } in
-        let ctx' = LTerm_draw.sub ctx rect in
-        Zed_string.of_utf8 marked_prefix
-        |> LTerm_draw.draw_string ctx' 0 0 ~style:{ LTerm_style.none with foreground = Some LTerm_style.lcyan }
-      else ()
+      (if marked then
+         let col1 = String.length selection_prefix and col2 = prefix_length in
+         let rect = { LTerm_geom.row1 = l; row2 = l + 1; col1; col2 } in
+         let ctx' = LTerm_draw.sub ctx rect in
+         Zed_string.of_utf8 marked_prefix
+         |> LTerm_draw.draw_string ctx' 0 0 ~style:{ LTerm_style.none with foreground = Some LTerm_style.lcyan });
 
-    method private draw_selection ctx row =
-      let size = LTerm_draw.size ctx in
-      let row = min row @@ pred size.rows in
-      let rect = { LTerm_geom.row1 = row; row2 = row + 1; col1 = 0; col2 = String.length selection_prefix } in
-      let ctx = LTerm_draw.sub ctx rect in
-      Zed_string.of_utf8 selection_prefix
-      |> LTerm_draw.draw_string ctx 0 0 ~style:{ LTerm_style.none with foreground = Some LTerm_style.lred }
+      if selected then self#draw_selection ctx l
 
     method private update_virtual_window ctx total_size coordinator =
       let selection = IC.current_selected_index coordinator in
@@ -83,7 +84,7 @@ class t (_coodinator : Index_coordinator.t) () =
       IC.iter_with_matching coordinator ~size:view_port_height
         ~offset:VW.Window.(start_index w)
         ~f:(fun index matching ->
-          self#draw_candidate ctx index matching.selected matching.candidate ~marked:matching.selected
+          self#draw_candidate ctx index matching.selected matching.candidate ~marked:matching.marked
             ~result:matching.match_result);
       self#update_virtual_window ctx view_port_height coordinator
 

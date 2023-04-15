@@ -73,6 +73,7 @@ let iter_with_matching ~offset ~size ~f t =
            f index { candidate; marked; selected = t.current_position = index; match_result })
 
 let selected_indices t =
-  if Int_set.is_empty t.marked_indices then [ t.current_position ] else Int_set.to_seq t.marked_indices |> List.of_seq
+  if Int_set.is_empty t.marked_indices then [ t.current_position ]
+  else Int_set.to_seq t.marked_indices |> List.of_seq |> List.sort Stdlib.compare
 
 let current_selected_index { current_position; _ } = current_position
