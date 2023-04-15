@@ -1,7 +1,5 @@
 # OCaml finder #
-This tool is small program as finder, such like fzf, peco.
-
-# TODO #
+`oif` is small program as finder, such like fzf, peco. `oif` is written by pure OCaml.
 
 # Install #
 
@@ -14,12 +12,12 @@ $ opam install .
 ```
 
 # Usage #
-`oif` is made for pipe from some input.
+`oif` is made for pipe with some inputs.
 
 ```shell
 $ ls | oif
 
-# If you use migemo together
+# If you want to use migemo, do the following
 $ ls | oif --migemo_dict_directory=<dict directory>
 # or
 $ export OIF_DEFAULT_MIGEMO_DICT_DIRECTORY=<dict directory>
@@ -39,6 +37,8 @@ $ ls | oif | sed -e 's/ /-/g'
   - end program and print selected candidate or marked candidates to stdout
 - `Tab`
   - mark current selected candidate
+- `C-q/C-g`
+  - quit program with status 130
 
 # Options #
 
